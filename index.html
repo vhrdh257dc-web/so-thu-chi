@@ -901,6 +901,7 @@ function renderDebts(){
   const owedList = debts.filter(d=>d.direction==='no_toi');
   const oweTotal = oweList.reduce((s,d)=> s + Math.max(0, d.total - d.paid), 0);
   const owedTotal = owedList.reduce((s,d)=> s + Math.max(0, d.total - d.paid), 0);
+  const mk = monthKey(new Date());
 
   app.innerHTML = `
     <h1>📋 Khoản nợ</h1>
@@ -929,10 +930,15 @@ function renderDebts(){
       <div class="cat-grid" id="debtTypeGrid"></div>
       <label>Tổng số tiền (đ)</label>
       <input type="number" id="dTotal" placeholder="0">
-      <label>Đã trả / đã nhận trước đó (đ, tuỳ chọn)</label>
+      <div id="installmentWrap" style="display:none;">
+        <label>Số tháng trả góp</label>
+        <input type="number" id="dMonths" placeholder="VD: 12" min="1">
+        <div id="monthlyPreview" style="font-size:13px;color:var(--accent);margin-top:6px;min-height:20px;"></div>
+      </div>
+      <label>Đã trả trước đó (đ, tuỳ chọn)</label>
       <input type="number" id="dPaid" placeholder="0">
-      <label>Hạn trả (tuỳ chọn)</label>
-      <input type="date" id="dDue">
+      <label>Ngày đến hạn hàng tháng (1–28)</label>
+      <input type="number" id="dDueDay" placeholder="VD: 15" min="1" max="28">
       <div class="sheet-actions">
         <button class="btn save" id="btnAddDebt" style="flex:1;">Thêm khoản nợ</button>
       </div>
@@ -953,10 +959,26 @@ function renderDebts(){
       </button>
     `).join('');
     grid.querySelectorAll('.cat-btn').forEach(b=>{
-      b.onclick = ()=>{ selDebtType = b.dataset.id; buildTypeGrid(); };
+      b.onclick = ()=>{
+        selDebtType = b.dataset.id;
+        buildTypeGrid();
+        document.getElementById('installmentWrap').style.display =
+          (selDebtType==='tra_gop'||selDebtType==='the_tin_dung') ? '' : 'none';
+      };
     });
   }
   buildTypeGrid();
+
+  // live preview monthly amount
+  const calcPreview = ()=>{
+    const total = parseFloat(document.getElementById('dTotal').value)||0;
+    const months = parseInt(document.getElementById('dMonths').value)||0;
+    const el = document.getElementById('monthlyPreview');
+    if(total>0 && months>0) el.textContent = `→ Mỗi tháng trả: ${fmt(Math.ceil(total/months))}`;
+    else el.textContent = '';
+  };
+  document.getElementById('dTotal').oninput = calcPreview;
+  document.getElementById('dMonths') && (document.getElementById('dMonths').oninput = calcPreview);
 
   document.getElementById('btnAddDebt').onclick = async ()=>{
     const nameInput = document.getElementById('dName');
@@ -967,9 +989,11 @@ function renderDebts(){
       return;
     }
     const paid = Math.min(total, Math.round(parseFloat(document.getElementById('dPaid').value) || 0));
-    const due = document.getElementById('dDue').value || '';
+    const dueDay = Math.min(28, Math.max(1, parseInt(document.getElementById('dDueDay').value)||1));
+    const isInstallment = selDebtType==='tra_gop'||selDebtType==='the_tin_dung';
+    const months = isInstallment ? (parseInt(document.getElementById('dMonths').value)||0) : 0;
     const id = 'd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    debts.push({ id, name, type: selDebtType, direction: debtDirection, total, paid, due });
+    debts.push({ id, name, type: selDebtType, direction: debtDirection, total, paid, dueDay, months, paidMonths:[] });
     await saveDebts();
     render();
   };
@@ -981,18 +1005,69 @@ function renderDebts(){
     return;
   }
   const barColor = debtDirection==='toi_no' ? '#D85A30' : '#1D9E75';
+
   listEl.innerHTML = list.map(d=>{
     const remaining = Math.max(0, d.total - d.paid);
     const pct = d.total ? Math.min(100, Math.round(d.paid/d.total*100)) : 0;
     const t = DEBT_TYPES[d.type] || DEBT_TYPES.khac;
-    const dueStr = d.due ? `· Hạn ${new Date(d.due+'T00:00:00').getDate()}/${new Date(d.due+'T00:00:00').getMonth()+1}/${new Date(d.due+'T00:00:00').getFullYear()}` : '';
+    const dueDay = d.dueDay || '';
+    const dueLine = dueDay ? `· Ngày ${dueDay} hàng tháng` : '';
+
+    // installment logic
+    const isInstallment = d.months > 0;
+    const monthlyAmt = isInstallment ? Math.ceil(d.total / d.months) : 0;
+    const paidMonths = d.paidMonths || [];
+    const paidCount = paidMonths.length;
+    const thisMonthPaid = paidMonths.includes(mk);
+    const remainMonths = Math.max(0, d.months - paidCount);
+    const installmentHTML = isInstallment ? `
+      <div style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+          <span style="color:var(--ink-soft);">Trả góp</span>
+          <span style="font-weight:700;">${fmt(monthlyAmt)}<span style="font-weight:400;color:var(--ink-soft);">/tháng</span></span>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
+          ${Array.from({length:d.months},(_,i)=>{
+            const isPaid = i < paidCount;
+            return `<div style="width:22px;height:22px;border-radius:5px;font-size:10px;display:flex;align-items:center;justify-content:center;background:${isPaid?barColor:'var(--line)'};color:${isPaid?'#fff':'var(--ink-soft)'};">${i+1}</div>`;
+          }).join('')}
+        </div>
+        <div style="font-size:12.5px;color:var(--ink-soft);">
+          Đã trả <b style="color:var(--ink);">${paidCount}/${d.months}</b> tháng
+          ${remainMonths>0?`· Còn <b style="color:${barColor};">${remainMonths}</b> tháng`:'· <b style="color:var(--income);">Đã trả xong 🎉</b>'}
+        </div>
+      </div>
+      ${remaining>0 && remainMonths>0 ? `
+      <div class="debt-pay-row">
+        <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
+          Tháng ${new Date().getMonth()+1}/${new Date().getFullYear()}:
+          <b style="color:var(--ink);margin-left:4px;">${fmt(monthlyAmt)}</b>
+        </div>
+        <select id="payWallet-${d.id}" style="flex:0 0 auto;">
+          ${wallets.map(w=>`<option value="${w.id}">${w.icon} ${w.name}</option>`).join('')}
+        </select>
+        <button data-id="${d.id}" class="debt-pay-month-btn" ${thisMonthPaid?'disabled style="opacity:0.5;"':''}>
+          ${thisMonthPaid?'Đã trả tháng này ✓':'Tích trả tháng này'}
+        </button>
+      </div>` : ''}
+    ` : `
+      ${remaining>0 ? `
+      <div class="debt-pay-row">
+        <input type="number" placeholder="Số tiền vừa trả/nhận" id="pay-${d.id}">
+        <select id="payWallet-${d.id}" style="flex:0 0 auto;">
+          ${wallets.map(w=>`<option value="${w.id}">${w.icon} ${w.name}</option>`).join('')}
+        </select>
+        <button data-id="${d.id}" class="debt-pay-btn">Ghi nhận</button>
+      </div>` : ''}
+    `;
+
     return `
       <div class="debt-card ${remaining<=0?'debt-paid-off':''}">
         <div class="debt-top">
           <div class="debt-ic" style="background:${barColor}22;color:${barColor};">${t.icon}</div>
           <div class="debt-info">
             <div class="debt-name">${escapeHtml(d.name)}</div>
-            <div class="debt-sub">${t.name} ${dueStr}</div>
+            <div class="debt-sub">${t.name} ${dueLine}</div>
           </div>
           <button class="debt-del" data-id="${d.id}" aria-label="Xoá khoản nợ">🗑</button>
         </div>
@@ -1001,14 +1076,7 @@ function renderDebts(){
           <span>Đã trả: <b>${fmt(d.paid)}</b> / ${fmt(d.total)}</span>
           <span>${remaining<=0?'Đã xong ✓':'Còn lại: '}${remaining>0?`<b>${fmt(remaining)}</b>`:''}</span>
         </div>
-        ${remaining>0 ? `
-        <div class="debt-pay-row">
-          <input type="number" placeholder="Số tiền vừa trả/nhận" id="pay-${d.id}">
-          <select id="payWallet-${d.id}" style="flex:0 0 auto;width:auto;">
-            ${wallets.map(w=>`<option value="${w.id}">${w.icon} ${w.name}</option>`).join('')}
-          </select>
-          <button data-id="${d.id}" class="debt-pay-btn">Ghi nhận</button>
-        </div>` : ''}
+        ${installmentHTML}
       </div>
     `;
   }).join('');
@@ -1020,6 +1088,8 @@ function renderDebts(){
       render();
     };
   });
+
+  // regular pay
   listEl.querySelectorAll('.debt-pay-btn').forEach(btn=>{
     btn.onclick = async ()=>{
       const id = btn.dataset.id;
@@ -1031,19 +1101,36 @@ function renderDebts(){
       const applied = Math.min(amt, d.total - d.paid);
       d.paid = Math.min(d.total, d.paid + amt);
       await saveDebts();
-
-      const tx = {
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
-        type: d.direction === 'toi_no' ? 'expense' : 'income',
-        cat: 'tra_no',
-        walletId,
-        amount: applied,
-        date: todayStr(),
-        note: (d.direction === 'toi_no' ? 'Trả nợ: ' : 'Thu nợ: ') + d.name
-      };
-      transactions.push(tx);
+      transactions.push({
+        id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+        type: d.direction==='toi_no'?'expense':'income',
+        cat:'tra_no', walletId, amount:applied, date:todayStr(),
+        note:(d.direction==='toi_no'?'Trả nợ: ':'Thu nợ: ')+d.name
+      });
       await saveData();
+      render();
+    };
+  });
 
+  // monthly installment pay
+  listEl.querySelectorAll('.debt-pay-month-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      const d = debts.find(x=>x.id===id);
+      if(!d || (d.paidMonths||[]).includes(mk)) return;
+      const walletId = document.getElementById('payWallet-'+id).value;
+      const monthlyAmt = Math.ceil(d.total / d.months);
+      const applied = Math.min(monthlyAmt, d.total - d.paid);
+      d.paidMonths = d.paidMonths || [];
+      d.paidMonths.push(mk);
+      d.paid = Math.min(d.total, d.paid + applied);
+      await saveDebts();
+      transactions.push({
+        id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+        type:'expense', cat:'tra_no', walletId, amount:applied, date:todayStr(),
+        note:`Trả góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()}: `+d.name
+      });
+      await saveData();
       render();
     };
   });
