@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sổ Thu Chi</title>
+<style>
+  :root{
+    --bg:#f6f5f1;
+    --card:#ffffff;
+    --ink:#1f2421;
+    --ink-soft:#6b6f6a;
+    --line:#e6e3da;
+    --income:#1d9e75;
+    --income-soft:#e1f5ee;
+    --expense:#d85a30;
+    --expense-soft:#faece7;
+    --accent:#534ab7;
+    --accent-soft:#eeedfe;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:72px 14px 40px;
+  }
+  .wrap{max-width:520px;margin:0 auto;}
+  h1{
+    font-size:22px;
+    font-weight:700;
+    margin:4px 0 18px;
+    letter-spacing:-0.3px;
+  }
+  .balance-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px;
+    margin-bottom:14px;
+  }
+  .balance-label{font-size:13px;color:var(--ink-soft);margin-bottom:4px;}
+  .balance-value{font-size:32px;font-weight:700;letter-spacing:-0.5px;}
+  .balance-row{display:flex;gap:10px;margin-top:14px;}
+  .mini{
+    flex:1;
+    border-radius:10px;
+    padding:10px 12px;
+  }
+  .mini.income{background:var(--income-soft);}
+  .mini.expense{background:var(--expense-soft);}
+  .mini-label{font-size:12px;display:flex;align-items:center;gap:5px;}
+  .mini.income .mini-label{color:var(--income);}
+  .mini.expense .mini-label{color:var(--expense);}
+  .mini-value{font-size:17px;font-weight:700;margin-top:2px;}
+  .mini.income .mini-value{color:var(--income);}
+  .mini.expense .mini-value{color:var(--expense);}
+
+  .month-nav{
+    display:flex;align-items:center;justify-content:space-between;
+    margin:18px 0 10px;
+  }
+  .month-nav button{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    width:32px;height:32px;font-size:16px;cursor:pointer;color:var(--ink);
+  }
+  .month-nav .month-label{font-weight:600;font-size:15px;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .card h2{font-size:14px;font-weight:600;margin:0 0 10px;color:var(--ink-soft);}
+
+  .chart-wrap{position:relative;height:220px;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:12px;font-size:12.5px;color:var(--ink-soft);}
+  .legend span.dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;}
+
+  .tx-list{margin-top:4px;}
+  .tx-empty{
+    text-align:center;color:var(--ink-soft);font-size:14px;padding:30px 10px;
+  }
+  .tx-item{
+    display:flex;align-items:center;gap:10px;
+    padding:11px 0;border-bottom:1px solid var(--line);
+  }
+  .tx-item:last-child{border-bottom:none;}
+  .tx-icon{
+    width:36px;height:36px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:17px;flex-shrink:0;
+  }
+  .tx-mid{flex:1;min-width:0;}
+  .tx-cat{font-size:14.5px;font-weight:600;}
+  .tx-note{font-size:12.5px;color:var(--ink-soft);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tx-right{text-align:right;flex-shrink:0;}
+  .tx-amount{font-weight:700;font-size:14.5px;}
+  .tx-amount.income{color:var(--income);}
+  .tx-amount.expense{color:var(--expense);}
+  .tx-date{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
+  .tx-del{
+    background:none;border:none;color:var(--ink-soft);font-size:18px;cursor:pointer;
+    padding:2px 4px;margin-left:2px;line-height:1;
+  }
+
+  .fab{
+    position:fixed;bottom:24px;right:50%;transform:translateX(260px);
+    width:54px;height:54px;border-radius:50%;
+    background:var(--ink);color:#fff;border:none;font-size:26px;
+    cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,0.18);
+    display:flex;align-items:center;justify-content:center;
+    z-index:30;
+  }
+  @media (max-width:560px){
+    .fab{right:18px;transform:none;}
+  }
+
+  .tabbar{
+    position:fixed;top:0;left:0;right:0;
+    background:var(--card);border-bottom:1px solid var(--line);
+    display:flex;justify-content:center;z-index:30;
+  }
+  .tabbar-inner{display:flex;width:100%;max-width:520px;overflow-x:auto;}
+  .tab-btn{
+    flex:1;background:none;border:none;padding:10px 2px 9px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:10.5px;color:var(--ink-soft);cursor:pointer;min-width:58px;
+  }
+  .tab-btn .tic{font-size:18px;}
+  .tab-btn.active{color:var(--ink);font-weight:600;border-bottom:2.5px solid var(--ink);}
+
+  .cat-list-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:6px 16px;margin-bottom:14px;
+  }
+  .cat-row{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 0;border-bottom:1px solid var(--line);
+  }
+  .cat-row:last-child{border-bottom:none;}
+  .cat-row .cat-ic{
+    width:36px;height:36px;border-radius:10px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:17px;
+  }
+  .cat-row .cat-info{flex:1;min-width:0;}
+  .cat-row .cat-name{font-size:14.5px;font-weight:600;}
+  .cat-row .cat-sum{font-size:12.5px;color:var(--ink-soft);margin-top:1px;}
+  .cat-row .cat-total{font-size:14.5px;font-weight:700;flex-shrink:0;}
+  .cat-row .cat-del{
+    background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:2px 2px;
+  }
+  .add-cat-card{
+    background:var(--card);border:1.5px dashed var(--line);border-radius:var(--radius);
+    padding:14px 16px;display:flex;gap:8px;align-items:center;margin-bottom:14px;
+  }
+  .add-cat-card input{flex:1;}
+  .add-cat-card .ic-pick{width:54px;flex-shrink:0;text-align:center;}
+  .section-toggle{display:flex;gap:8px;margin-bottom:12px;}
+  .section-toggle button{
+    flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--card);font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+  }
+  .section-toggle button.active.expense{background:var(--expense-soft);border-color:var(--expense);color:var(--expense);}
+  .section-toggle button.active.income{background:var(--income-soft);border-color:var(--income);color:var(--income);}
+
+  .wallet-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;
+  }
+  .wallet-ic{
+    width:42px;height:42px;border-radius:11px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:19px;
+  }
+  .wallet-info{flex:1;min-width:0;}
+  .wallet-name{font-size:14.5px;font-weight:600;}
+  .wallet-sub{font-size:12px;color:var(--ink-soft);margin-top:1px;}
+  .wallet-bal{font-size:16px;font-weight:700;flex-shrink:0;text-align:right;}
+  .wallet-del{
+    background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:2px 0 2px 4px;
+  }
+  .wallet-select{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+  .wallet-chip{
+    flex:0 0 auto;border:1.5px solid var(--line);background:var(--card);border-radius:10px;
+    padding:8px 12px;font-size:13px;cursor:pointer;color:var(--ink-soft);white-space:nowrap;
+  }
+  .wallet-chip.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
+
+  .debt-summary{display:flex;gap:10px;margin-bottom:14px;}
+  .debt-sum-card{flex:1;border-radius:12px;padding:12px 14px;}
+  .debt-sum-card.owe{background:var(--expense-soft);}
+  .debt-sum-card.owed{background:var(--income-soft);}
+  .debt-sum-label{font-size:12px;}
+  .debt-sum-card.owe .debt-sum-label{color:var(--expense);}
+  .debt-sum-card.owed .debt-sum-label{color:var(--income);}
+  .debt-sum-value{font-size:17px;font-weight:700;margin-top:2px;}
+  .debt-sum-card.owe .debt-sum-value{color:var(--expense);}
+  .debt-sum-card.owed .debt-sum-value{color:var(--income);}
+
+  .debt-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:12px;
+  }
+  .debt-top{display:flex;align-items:flex-start;gap:10px;}
+  .debt-ic{
+    width:38px;height:38px;border-radius:10px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:17px;
+  }
+  .debt-info{flex:1;min-width:0;}
+  .debt-name{font-size:14.5px;font-weight:600;}
+  .debt-sub{font-size:12px;color:var(--ink-soft);margin-top:1px;}
+  .debt-del{background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;flex-shrink:0;}
+  .debt-progress{height:7px;border-radius:4px;background:var(--bg);margin:12px 0 6px;overflow:hidden;}
+  .debt-progress-fill{height:100%;border-radius:4px;}
+  .debt-nums{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);}
+  .debt-nums b{color:var(--ink);font-weight:700;}
+  .debt-pay-row{display:flex;gap:8px;margin-top:12px;}
+  .debt-pay-row input{flex:1;}
+  .debt-pay-row button{
+    flex:0 0 auto;padding:0 14px;border-radius:10px;border:none;
+    background:var(--ink);color:#fff;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .debt-paid-off{opacity:0.6;}
+
+  .fixed-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:13px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;
+  }
+  .fixed-ic{
+    width:38px;height:38px;border-radius:10px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:17px;
+  }
+  .fixed-info{flex:1;min-width:0;}
+  .fixed-name{font-size:14.5px;font-weight:600;}
+  .fixed-sub{font-size:12px;color:var(--ink-soft);margin-top:1px;}
+  .fixed-amount{font-size:14.5px;font-weight:700;flex-shrink:0;text-align:right;}
+  .fixed-actions{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+  .fixed-pay-btn{
+    border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .fixed-pay-btn.unpaid{background:var(--expense-soft);color:var(--expense);}
+  .fixed-pay-btn.paid{background:var(--income-soft);color:var(--income);}
+  .fixed-del{background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;}
+
+  .jar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+  .jar-item{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 10px 12px;text-align:center;position:relative;
+  }
+  .jar-emoji{font-size:26px;display:block;margin-bottom:6px;}
+  .jar-name{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3;}
+  .jar-pct{font-size:20px;font-weight:700;margin:4px 0 2px;}
+  .jar-amount{font-size:11.5px;color:var(--ink-soft);}
+  .jar-del{
+    position:absolute;top:6px;right:6px;
+    background:none;border:none;color:var(--ink-soft);font-size:13px;cursor:pointer;padding:0;
+  }
+  .jar-total-row{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .jar-total-row .label{font-size:13px;color:var(--ink-soft);}
+  .jar-total-row .val{font-size:15px;font-weight:700;}
+  .jar-total-row .val.ok{color:var(--income);}
+  .jar-total-row .val.over{color:var(--expense);}
+  .pct-bar{height:8px;border-radius:4px;background:var(--bg);overflow:hidden;margin-bottom:14px;}
+  .pct-bar-fill{height:100%;border-radius:4px;transition:width .3s;}
+
+  .jar-base-toggle{display:flex;gap:8px;margin-bottom:14px;}
+  .jar-base-toggle button{
+    flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--card);font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+  }
+  .jar-base-toggle button.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.35);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:50;
+  }
+  .overlay.hidden{display:none;}
+  .sheet{
+    background:var(--card);width:100%;max-width:520px;
+    border-radius:18px 18px 0 0;padding:20px 18px 26px;
+    max-height:88vh;overflow-y:auto;
+  }
+  .sheet h2{margin:0 0 14px;font-size:17px;}
+  .type-toggle{display:flex;gap:8px;margin-bottom:14px;}
+  .type-toggle button{
+    flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--card);font-size:14px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+  }
+  .type-toggle button.active.expense{background:var(--expense-soft);border-color:var(--expense);color:var(--expense);}
+  .type-toggle button.active.income{background:var(--income-soft);border-color:var(--income);color:var(--income);}
+
+  label{font-size:12.5px;color:var(--ink-soft);display:block;margin:12px 0 5px;}
+  input[type=number],input[type=text],input[type=date]{
+    width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);
+    font-size:15px;background:var(--bg);color:var(--ink);
+  }
+  .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
+  .cat-btn{
+    border:1.5px solid var(--line);background:var(--card);border-radius:10px;
+    padding:9px 4px;font-size:11.5px;cursor:pointer;text-align:center;color:var(--ink-soft);
+  }
+  .cat-btn .ic{font-size:18px;display:block;margin-bottom:3px;}
+  .cat-btn.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
+
+  .sheet-actions{display:flex;gap:10px;margin-top:20px;}
+  .btn{
+    flex:1;padding:13px;border-radius:11px;border:none;font-size:15px;font-weight:600;cursor:pointer;
+  }
+  .btn.cancel{background:var(--bg);color:var(--ink-soft);border:1px solid var(--line);}
+  .btn.save{background:var(--ink);color:#fff;}
+  .loading{text-align:center;padding:40px;color:var(--ink-soft);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="tabbar">
+  <div class="tabbar-inner">
+    <button class="tab-btn active" id="tabHome" data-tab="home">
+      <span class="tic">🏠</span>Tổng quan
+    </button>
+    <button class="tab-btn" id="tabJars" data-tab="jars">
+      <span class="tic">🏺</span>6 lọ
+    </button>
+    <button class="tab-btn" id="tabCatFixed" data-tab="catfixed">
+      <span class="tic">🔁</span>Cố định
+    </button>
+    <button class="tab-btn" id="tabDebts" data-tab="debts">
+      <span class="tic">📋</span>Khoản nợ
+    </button>
+    <button class="tab-btn" id="tabWallets" data-tab="wallets">
+      <span class="tic">👛</span>Ví & TK
+    </button>
+  </div>
+</div>
+<div id="app">
+  <div class="loading" id="loading">Đang tải dữ liệu…</div>
+</div>
+</div>
+
+<button class="fab" id="fabAdd" style="display:none;">+</button>
+
+<div class="overlay hidden" id="overlay">
+  <div class="sheet">
+    <h2 id="sheetTitle">Thêm giao dịch</h2>
+    <div class="type-toggle">
+      <button type="button" id="typeExpense" class="active expense">Chi tiền</button>
+      <button type="button" id="typeIncome" class="income">Thu tiền</button>
+    </div>
+
+    <label>Số tiền (đ)</label>
+    <input type="number" id="fAmount" inputmode="numeric" placeholder="0">
+
+    <label>Ví / Tài khoản</label>
+    <div class="wallet-select" id="walletSelect"></div>
+
+    <label>Danh mục</label>
+    <div class="cat-grid" id="catGrid"></div>
+
+    <label>Ngày</label>
+    <input type="date" id="fDate">
+
+    <label>Ghi chú (tuỳ chọn)</label>
+    <input type="text" id="fNote" placeholder="VD: Ăn trưa với bạn">
+
+    <div class="sheet-actions">
+      <button class="btn cancel" id="btnCancel">Huỷ</button>
+      <button class="btn save" id="btnSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+// ── Firebase init ──────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBr8hArUU6CH3oVlxQo3GI9ksZTGc_HegY",
+  authDomain: "so-thu-chi-aaffd.firebaseapp.com",
+  databaseURL: "https://so-thu-chi-aaffd-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "so-thu-chi-aaffd",
+  storageBucket: "so-thu-chi-aaffd.firebasestorage.app",
+  messagingSenderId: "998560301743",
+  appId: "1:998560301743:web:f122db5842fd8c883eca5a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const ref = (key) => db.ref('sothuchu/' + key);
+const DEFAULT_CATS = {
+  expense: [
+    {id:'an_uong', name:'Ăn uống', icon:'🍜', color:'#D85A30'},
+    {id:'di_chuyen', name:'Di chuyển', icon:'🚗', color:'#378ADD'},
+    {id:'hoa_don', name:'Hoá đơn', icon:'🧾', color:'#7F77DD'},
+    {id:'mua_sam', name:'Mua sắm', icon:'🛍️', color:'#D4537E'},
+    {id:'giai_tri', name:'Giải trí', icon:'🎮', color:'#EF9F27'},
+    {id:'suc_khoe', name:'Sức khoẻ', icon:'💊', color:'#1D9E75'},
+    {id:'nha_o', name:'Nhà ở', icon:'🏠', color:'#888780'},
+    {id:'tra_no', name:'Trả nợ', icon:'💳', color:'#5F5E5A'},
+    {id:'khac_chi', name:'Khác', icon:'•••', color:'#5F5E5A'},
+  ],
+  income: [
+    {id:'luong', name:'Lương', icon:'💵', color:'#1D9E75'},
+    {id:'thuong', name:'Thưởng', icon:'🎁', color:'#7F77DD'},
+    {id:'freelance', name:'Freelance', icon:'💻', color:'#378ADD'},
+    {id:'dau_tu', name:'Đầu tư', icon:'📈', color:'#EF9F27'},
+    {id:'cho_vay', name:'Được cho', icon:'🤝', color:'#D4537E'},
+    {id:'khac_thu', name:'Khác', icon:'•••', color:'#5F5E5A'},
+  ]
+};
+
+const DEBT_TYPES = {
+  nguoi_than: { name:'Người thân / bạn bè', icon:'🤝' },
+  the_tin_dung: { name:'Thẻ tín dụng', icon:'💳' },
+  tra_gop: { name:'Trả góp', icon:'📦' },
+  khac: { name:'Khác', icon:'•••' },
+};
+
+let transactions = [];
+let categories = { expense: [], income: [] };
+let wallets = [
+  { id:'cash', name:'Tiền mặt', icon:'💵', color:'#1D9E75', initialBalance:0, builtin:true },
+  { id:'bank', name:'Tài khoản ngân hàng', icon:'🏦', color:'#378ADD', initialBalance:0, builtin:true },
+];
+let debts = [];
+let debtDirection = 'toi_no';
+let fixedExpenses = [];
+const DEFAULT_JARS = [
+  { id:'jar_thiet_yeu', name:'Nhu cầu thiết yếu', icon:'🏠', pct:55, color:'#D85A30' },
+  { id:'jar_dau_tu',    name:'Đầu tư sinh lợi',   icon:'📈', pct:10, color:'#1D9E75' },
+  { id:'jar_tu_thien',  name:'Từ thiện',           icon:'🤝', pct:5,  color:'#7F77DD' },
+  { id:'jar_phat_trien',name:'Phát triển bản thân',icon:'📚', pct:10, color:'#378ADD' },
+  { id:'jar_huong_thu', name:'Hưởng thụ',          icon:'🎉', pct:10, color:'#D4537E' },
+  { id:'jar_tiet_kiem', name:'Tiết kiệm',           icon:'🐷', pct:10, color:'#639922' },
+];
+let jars = [];
+let currentTab = 'home';
+let catFixedView = 'cats';
+let catSection = 'expense';
+let currentType = 'expense';
+let currentCat = DEFAULT_CATS.expense[0].id;
+let currentWallet = 'cash';
+let editingId = null;
+let viewMonth = new Date();
+let pieChart = null, barChart = null;
+let storageOK = true;
+
+const fmt = n => Math.round(n).toLocaleString('vi-VN') + 'đ';
+const todayStr = () => new Date().toISOString().slice(0,10);
+const monthKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+const monthLabel = d => `Tháng ${d.getMonth()+1}/${d.getFullYear()}`;
+
+function allCats(type){
+  return categories[type];
+}
+function findCat(id){
+  return allCats('expense').find(c=>c.id===id) || allCats('income').find(c=>c.id===id) || {name:'Khác',icon:'•••',color:'#888'};
+}
+
+async function loadData(){
+  try{
+    const snap = await db.ref('sothuchu').once('value');
+    const d = snap.val() || {};
+    transactions   = d.transactions   ? Object.values(d.transactions)   : [];
+    categories     = d.categories     ? d.categories : JSON.parse(JSON.stringify(DEFAULT_CATS));
+    wallets        = d.wallets        ? Object.values(d.wallets)        : [
+      { id:'cash', name:'Tiền mặt', icon:'💵', color:'#1D9E75', initialBalance:0, builtin:true },
+      { id:'bank', name:'Tài khoản ngân hàng', icon:'🏦', color:'#378ADD', initialBalance:0, builtin:true },
+    ];
+    debts          = d.debts          ? Object.values(d.debts)          : [];
+    fixedExpenses  = d.fixedExpenses  ? Object.values(d.fixedExpenses)  : [];
+    jars           = d.jars           ? Object.values(d.jars)           : JSON.parse(JSON.stringify(DEFAULT_JARS));
+  }catch(e){
+    console.error('Firebase load error', e);
+    categories = JSON.parse(JSON.stringify(DEFAULT_CATS));
+    jars = JSON.parse(JSON.stringify(DEFAULT_JARS));
+  }
+  render();
+}
+
+// helpers: store arrays as objects keyed by item.id for Firebase
+const toObj = arr => {
+  const o = {};
+  arr.forEach(item => { o[item.id] = item; });
+  return o;
+};
+
+async function saveData(){
+  try{ await ref('transactions').set(toObj(transactions)); }catch(e){}
+}
+async function saveCategories(){
+  try{ await ref('categories').set(categories); }catch(e){}
+}
+async function saveWallets(){
+  try{ await ref('wallets').set(toObj(wallets)); }catch(e){}
+}
+async function saveDebts(){
+  try{ await ref('debts').set(toObj(debts)); }catch(e){}
+}
+async function saveFixedExpenses(){
+  try{ await ref('fixedExpenses').set(toObj(fixedExpenses)); }catch(e){}
+}
+async function saveJars(){
+  try{ await ref('jars').set(toObj(jars)); }catch(e){}
+}
+
+function findWallet(id){
+  return wallets.find(w=>w.id===id) || wallets[0] || { name:'Ví', icon:'👛', color:'#888' };
+}
+
+function walletBalance(id){
+  const w = findWallet(id);
+  const tx = transactions.filter(t=> (t.walletId || 'cash') === id);
+  const income = tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense = tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  return (w.initialBalance||0) + income - expense;
+}
+
+function monthTx(){
+  const mk = monthKey(viewMonth);
+  return transactions.filter(t => t.date.slice(0,7) === mk);
+}
+
+function render(){
+  if(currentTab === 'home'){
+    renderHome();
+    document.getElementById('fabAdd').style.display = 'flex';
+  } else if(currentTab === 'jars'){
+    renderJars();
+    document.getElementById('fabAdd').style.display = 'none';
+  } else if(currentTab === 'catfixed'){
+    renderCatFixed();
+    document.getElementById('fabAdd').style.display = 'none';
+  } else if(currentTab === 'debts'){
+    renderDebts();
+    document.getElementById('fabAdd').style.display = 'none';
+  } else {
+    renderWallets();
+    document.getElementById('fabAdd').style.display = 'none';
+  }
+  document.getElementById('tabHome').classList.toggle('active', currentTab==='home');
+  document.getElementById('tabJars').classList.toggle('active', currentTab==='jars');
+  document.getElementById('tabCatFixed').classList.toggle('active', currentTab==='catfixed');
+  document.getElementById('tabDebts').classList.toggle('active', currentTab==='debts');
+  document.getElementById('tabWallets').classList.toggle('active', currentTab==='wallets');
+}
+
+function renderHome(){
+  const app = document.getElementById('app');
+  const mtx = monthTx().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const income = mtx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense = mtx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const totalAll = wallets.reduce((s,w)=> s + walletBalance(w.id), 0);
+
+  app.innerHTML = `
+    <h1>💰 Sổ thu chi</h1>
+
+    <div class="balance-card">
+      <div class="balance-label">Số dư hiện tại</div>
+      <div class="balance-value">${fmt(totalAll)}</div>
+      <div class="balance-row">
+        <div class="mini income">
+          <div class="mini-label">↓ Thu tháng này</div>
+          <div class="mini-value">${fmt(income)}</div>
+        </div>
+        <div class="mini expense">
+          <div class="mini-label">↑ Chi tháng này</div>
+          <div class="mini-value">${fmt(expense)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="month-nav">
+      <button id="prevMonth">‹</button>
+      <div class="month-label">${monthLabel(viewMonth)}</div>
+      <button id="nextMonth">›</button>
+    </div>
+
+    <div class="card">
+      <h2>Chi tiêu theo danh mục</h2>
+      <div class="chart-wrap"><canvas id="pieCanvas" role="img" aria-label="Biểu đồ tròn chi tiêu theo danh mục tháng này"></canvas></div>
+      <div class="legend" id="pieLegend"></div>
+    </div>
+
+    <div class="card">
+      <h2>Thu chi 6 tháng gần nhất</h2>
+      <div class="chart-wrap" style="height:200px;"><canvas id="barCanvas" role="img" aria-label="Biểu đồ cột thu chi 6 tháng gần nhất"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h2>Giao dịch tháng này (${mtx.length})</h2>
+      <div class="tx-list" id="txList"></div>
+    </div>
+  `;
+
+  document.getElementById('prevMonth').onclick = ()=>{ viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1); render(); };
+  document.getElementById('nextMonth').onclick = ()=>{ viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 1); render(); };
+
+  renderTxList(mtx);
+  renderPie(mtx);
+  renderBar();
+}
+
+function renderTxList(mtx){
+  const list = document.getElementById('txList');
+  if(mtx.length === 0){
+    list.innerHTML = `<div class="tx-empty">Chưa có giao dịch nào trong tháng này.<br>Bấm nút + để thêm khoản thu hoặc chi.</div>`;
+    return;
+  }
+  list.innerHTML = mtx.map(t=>{
+    const cat = findCat(t.cat);
+    const wallet = findWallet(t.walletId || 'cash');
+    const d = new Date(t.date+'T00:00:00');
+    const dStr = `${d.getDate()}/${d.getMonth()+1}`;
+    return `
+      <div class="tx-item">
+        <div class="tx-icon" style="background:${cat.color}22;color:${cat.color};">${cat.icon}</div>
+        <div class="tx-mid">
+          <div class="tx-cat">${cat.name}</div>
+          <div class="tx-note">${wallet.icon} ${escapeHtml(wallet.name)}${t.note ? ' · ' + escapeHtml(t.note) : ''}</div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
+          <div class="tx-date">${dStr}</div>
+        </div>
+        <button class="tx-del" data-id="${t.id}" aria-label="Xoá giao dịch">🗑</button>
+      </div>
+    `;
+  }).join('');
+  list.querySelectorAll('.tx-del').forEach(btn=>{
+    btn.onclick = ()=> deleteTx(btn.dataset.id);
+  });
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderPie(mtx){
+  const exp = mtx.filter(t=>t.type==='expense');
+  const byCat = {};
+  exp.forEach(t=>{ byCat[t.cat] = (byCat[t.cat]||0) + t.amount; });
+  const entries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const total = entries.reduce((s,[,v])=>s+v,0);
+
+  const legend = document.getElementById('pieLegend');
+  if(entries.length === 0){
+    legend.innerHTML = `<span style="color:var(--ink-soft);">Chưa có khoản chi nào tháng này</span>`;
+  } else {
+    legend.innerHTML = entries.map(([id,val])=>{
+      const cat = findCat(id);
+      const pct = total ? Math.round(val/total*100) : 0;
+      return `<span><span class="dot" style="background:${cat.color};"></span>${cat.icon} ${cat.name} ${pct}%</span>`;
+    }).join('');
+  }
+
+  if(pieChart) pieChart.destroy();
+  const ctx = document.getElementById('pieCanvas');
+  if(entries.length === 0){
+    pieChart = new Chart(ctx, {
+      type:'doughnut',
+      data:{ labels:['Chưa có dữ liệu'], datasets:[{ data:[1], backgroundColor:['#e6e3da'] }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{enabled:false}} }
+    });
+    return;
+  }
+  pieChart = new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels: entries.map(([id])=>findCat(id).name),
+      datasets:[{
+        data: entries.map(([,v])=>v),
+        backgroundColor: entries.map(([id])=>findCat(id).color),
+        borderColor: '#ffffff',
+        borderWidth: 2,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{ callbacks:{ label: (c)=> ` ${c.label}: ${fmt(c.parsed)}` } }
+      }
+    }
+  });
+}
+
+function renderBar(){
+  const months = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-i, 1);
+    months.push(d);
+  }
+  const labels = months.map(d=>`Th${d.getMonth()+1}`);
+  const incomeData = months.map(d=>{
+    const mk = monthKey(d);
+    return transactions.filter(t=>t.type==='income' && t.date.slice(0,7)===mk).reduce((s,t)=>s+t.amount,0);
+  });
+  const expenseData = months.map(d=>{
+    const mk = monthKey(d);
+    return transactions.filter(t=>t.type==='expense' && t.date.slice(0,7)===mk).reduce((s,t)=>s+t.amount,0);
+  });
+
+  if(barChart) barChart.destroy();
+  const ctx = document.getElementById('barCanvas');
+  barChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { label:'Thu', data:incomeData, backgroundColor:'#1D9E75', borderRadius:4, maxBarThickness:18 },
+        { label:'Chi', data:expenseData, backgroundColor:'#D85A30', borderRadius:4, maxBarThickness:18 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        y:{ beginAtZero:true, ticks:{ callback:(v)=> (v/1000)+'k', color:'#898781' }, grid:{ color:'#e6e3da' } },
+        x:{ grid:{ display:false }, ticks:{ color:'#898781' } }
+      },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label:(c)=> ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
+      }
+    }
+  });
+}
+
+function renderCatsBody(container){
+  const cats = allCats(catSection);
+  const sums = {};
+  transactions.filter(t=>t.type===catSection).forEach(t=>{
+    sums[t.cat] = (sums[t.cat]||0) + t.amount;
+  });
+  const counts = {};
+  transactions.filter(t=>t.type===catSection).forEach(t=>{
+    counts[t.cat] = (counts[t.cat]||0) + 1;
+  });
+
+  container.innerHTML = `
+    <div class="section-toggle">
+      <button type="button" id="secExpense" class="expense ${catSection==='expense'?'active':''}">Khoản chi</button>
+      <button type="button" id="secIncome" class="income ${catSection==='income'?'active':''}">Khoản thu</button>
+    </div>
+
+    <div class="add-cat-card">
+      <div class="ic-pick" id="newCatIcon">🏷️</div>
+      <input type="text" id="newCatName" placeholder="Tên mục mới, VD: Du lịch">
+      <button class="btn save" style="flex:0 0 auto;padding:11px 16px;" id="btnAddCat">Thêm</button>
+    </div>
+
+    <div class="cat-list-card" id="catList"></div>
+  `;
+
+  document.getElementById('secExpense').onclick = ()=>{ catSection='expense'; render(); };
+  document.getElementById('secIncome').onclick = ()=>{ catSection='income'; render(); };
+
+  const icons = ['🏷️','🍱','🚕','🎓','🐾','🎁','💡','📱','🧹','🏖️','💰','📚'];
+  let iconIdx = 0;
+  document.getElementById('newCatIcon').onclick = ()=>{
+    iconIdx = (iconIdx+1) % icons.length;
+    document.getElementById('newCatIcon').textContent = icons[iconIdx];
+  };
+
+  document.getElementById('btnAddCat').onclick = async ()=>{
+    const nameInput = document.getElementById('newCatName');
+    const name = nameInput.value.trim();
+    if(!name) { nameInput.focus(); return; }
+    const palette = ['#534AB7','#1D9E75','#D85A30','#D4537E','#378ADD','#888780','#639922','#BA7517'];
+    const color = palette[Math.floor(Math.random()*palette.length)];
+    const id = 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    categories[catSection].push({ id, name, icon: icons[iconIdx], color });
+    await saveCategories();
+    nameInput.value = '';
+    render();
+  };
+
+  const list = document.getElementById('catList');
+  if(cats.length === 0){
+    list.innerHTML = `<div class="tx-empty">Chưa có mục nào.</div>`;
+    return;
+  }
+  list.innerHTML = cats.map(c=>{
+    const total = sums[c.id] || 0;
+    const cnt = counts[c.id] || 0;
+    return `
+      <div class="cat-row">
+        <div class="cat-ic" style="background:${c.color}22;color:${c.color};">${c.icon}</div>
+        <div class="cat-info">
+          <div class="cat-name">${escapeHtml(c.name)}</div>
+          <div class="cat-sum">${cnt} giao dịch</div>
+        </div>
+        <div class="cat-total">${fmt(total)}</div>
+        <button class="cat-del" data-id="${c.id}" aria-label="Xoá mục">🗑</button>
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('.cat-del').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(categories[catSection].length <= 1){
+        alert('Cần giữ lại ít nhất 1 danh mục.');
+        return;
+      }
+      categories[catSection] = categories[catSection].filter(c=>c.id!==btn.dataset.id);
+      await saveCategories();
+      render();
+    };
+  });
+}
+
+function renderWallets(){
+  const app = document.getElementById('app');
+  const total = wallets.reduce((s,w)=> s + walletBalance(w.id), 0);
+
+  app.innerHTML = `
+    <h1>👛 Ví & tài khoản</h1>
+
+    <div class="balance-card">
+      <div class="balance-label">Tổng tất cả ví</div>
+      <div class="balance-value">${fmt(total)}</div>
+    </div>
+
+    <div id="walletList"></div>
+
+    <div class="add-cat-card">
+      <div class="ic-pick" id="newWalletIcon">👛</div>
+      <input type="text" id="newWalletName" placeholder="Tên ví, VD: Ví Momo">
+      <button class="btn save" style="flex:0 0 auto;padding:11px 16px;" id="btnAddWallet">Thêm</button>
+    </div>
+    <label>Số dư ban đầu (đ, tuỳ chọn)</label>
+    <input type="number" id="newWalletBalance" placeholder="0">
+  `;
+
+  const wIcons = ['👛','💳','🏦','📱','🐷','💰','🪙','🌟'];
+  let wIconIdx = 0;
+  document.getElementById('newWalletIcon').onclick = ()=>{
+    wIconIdx = (wIconIdx+1) % wIcons.length;
+    document.getElementById('newWalletIcon').textContent = wIcons[wIconIdx];
+  };
+
+  document.getElementById('btnAddWallet').onclick = async ()=>{
+    const nameInput = document.getElementById('newWalletName');
+    const name = nameInput.value.trim();
+    if(!name){ nameInput.focus(); return; }
+    const balInput = document.getElementById('newWalletBalance');
+    const initialBalance = Math.round(parseFloat(balInput.value) || 0);
+    const palette = ['#534AB7','#1D9E75','#D85A30','#D4537E','#378ADD','#888780','#639922','#BA7517'];
+    const color = palette[Math.floor(Math.random()*palette.length)];
+    const id = 'w_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    wallets.push({ id, name, icon: wIcons[wIconIdx], color, initialBalance, builtin:false });
+    await saveWallets();
+    render();
+  };
+
+  const list = document.getElementById('walletList');
+  list.innerHTML = wallets.map(w=>{
+    const bal = walletBalance(w.id);
+    const cnt = transactions.filter(t=>(t.walletId||'cash')===w.id).length;
+    return `
+      <div class="wallet-card">
+        <div class="wallet-ic" style="background:${w.color}22;color:${w.color};">${w.icon}</div>
+        <div class="wallet-info">
+          <div class="wallet-name">${escapeHtml(w.name)}</div>
+          <div class="wallet-sub">${cnt} giao dịch</div>
+        </div>
+        <div class="wallet-bal">${fmt(bal)}</div>
+        ${!w.builtin ? `<button class="wallet-del" data-id="${w.id}" aria-label="Xoá ví">🗑</button>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('.wallet-del').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(wallets.length <= 1) return;
+      wallets = wallets.filter(w=>w.id!==btn.dataset.id);
+      await saveWallets();
+      render();
+    };
+  });
+}
+
+function renderDebts(){
+  const app = document.getElementById('app');
+  const oweList = debts.filter(d=>d.direction==='toi_no');
+  const owedList = debts.filter(d=>d.direction==='no_toi');
+  const oweTotal = oweList.reduce((s,d)=> s + Math.max(0, d.total - d.paid), 0);
+  const owedTotal = owedList.reduce((s,d)=> s + Math.max(0, d.total - d.paid), 0);
+
+  app.innerHTML = `
+    <h1>📋 Khoản nợ</h1>
+
+    <div class="debt-summary">
+      <div class="debt-sum-card owe">
+        <div class="debt-sum-label">Tôi đang nợ</div>
+        <div class="debt-sum-value">${fmt(oweTotal)}</div>
+      </div>
+      <div class="debt-sum-card owed">
+        <div class="debt-sum-label">Người khác nợ tôi</div>
+        <div class="debt-sum-value">${fmt(owedTotal)}</div>
+      </div>
+    </div>
+
+    <div class="section-toggle">
+      <button type="button" id="debtDirOwe" class="expense ${debtDirection==='toi_no'?'active':''}">Tôi nợ</button>
+      <button type="button" id="debtDirOwed" class="income ${debtDirection==='no_toi'?'active':''}">Nợ tôi</button>
+    </div>
+
+    <div class="card">
+      <h2>Thêm khoản nợ mới</h2>
+      <label>Tên (VD: Vay anh Nam, Thẻ Vietcombank)</label>
+      <input type="text" id="dName" placeholder="Tên khoản nợ">
+      <label>Loại</label>
+      <div class="cat-grid" id="debtTypeGrid"></div>
+      <label>Tổng số tiền (đ)</label>
+      <input type="number" id="dTotal" placeholder="0">
+      <label>Đã trả / đã nhận trước đó (đ, tuỳ chọn)</label>
+      <input type="number" id="dPaid" placeholder="0">
+      <label>Hạn trả (tuỳ chọn)</label>
+      <input type="date" id="dDue">
+      <div class="sheet-actions">
+        <button class="btn save" id="btnAddDebt" style="flex:1;">Thêm khoản nợ</button>
+      </div>
+    </div>
+
+    <div id="debtList"></div>
+  `;
+
+  document.getElementById('debtDirOwe').onclick = ()=>{ debtDirection='toi_no'; render(); };
+  document.getElementById('debtDirOwed').onclick = ()=>{ debtDirection='no_toi'; render(); };
+
+  let selDebtType = 'nguoi_than';
+  const grid = document.getElementById('debtTypeGrid');
+  function buildTypeGrid(){
+    grid.innerHTML = Object.entries(DEBT_TYPES).map(([id,t])=>`
+      <button type="button" class="cat-btn ${id===selDebtType?'active':''}" data-id="${id}">
+        <span class="ic">${t.icon}</span>${t.name}
+      </button>
+    `).join('');
+    grid.querySelectorAll('.cat-btn').forEach(b=>{
+      b.onclick = ()=>{ selDebtType = b.dataset.id; buildTypeGrid(); };
+    });
+  }
+  buildTypeGrid();
+
+  document.getElementById('btnAddDebt').onclick = async ()=>{
+    const nameInput = document.getElementById('dName');
+    const name = nameInput.value.trim();
+    const total = Math.round(parseFloat(document.getElementById('dTotal').value) || 0);
+    if(!name || total <= 0){
+      (!name ? nameInput : document.getElementById('dTotal')).focus();
+      return;
+    }
+    const paid = Math.min(total, Math.round(parseFloat(document.getElementById('dPaid').value) || 0));
+    const due = document.getElementById('dDue').value || '';
+    const id = 'd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    debts.push({ id, name, type: selDebtType, direction: debtDirection, total, paid, due });
+    await saveDebts();
+    render();
+  };
+
+  const list = debts.filter(d=>d.direction===debtDirection);
+  const listEl = document.getElementById('debtList');
+  if(list.length === 0){
+    listEl.innerHTML = `<div class="tx-empty">Chưa có khoản nợ nào ở mục này.</div>`;
+    return;
+  }
+  const barColor = debtDirection==='toi_no' ? '#D85A30' : '#1D9E75';
+  listEl.innerHTML = list.map(d=>{
+    const remaining = Math.max(0, d.total - d.paid);
+    const pct = d.total ? Math.min(100, Math.round(d.paid/d.total*100)) : 0;
+    const t = DEBT_TYPES[d.type] || DEBT_TYPES.khac;
+    const dueStr = d.due ? `· Hạn ${new Date(d.due+'T00:00:00').getDate()}/${new Date(d.due+'T00:00:00').getMonth()+1}/${new Date(d.due+'T00:00:00').getFullYear()}` : '';
+    return `
+      <div class="debt-card ${remaining<=0?'debt-paid-off':''}">
+        <div class="debt-top">
+          <div class="debt-ic" style="background:${barColor}22;color:${barColor};">${t.icon}</div>
+          <div class="debt-info">
+            <div class="debt-name">${escapeHtml(d.name)}</div>
+            <div class="debt-sub">${t.name} ${dueStr}</div>
+          </div>
+          <button class="debt-del" data-id="${d.id}" aria-label="Xoá khoản nợ">🗑</button>
+        </div>
+        <div class="debt-progress"><div class="debt-progress-fill" style="width:${pct}%;background:${barColor};"></div></div>
+        <div class="debt-nums">
+          <span>Đã trả: <b>${fmt(d.paid)}</b> / ${fmt(d.total)}</span>
+          <span>${remaining<=0?'Đã xong ✓':'Còn lại: '}${remaining>0?`<b>${fmt(remaining)}</b>`:''}</span>
+        </div>
+        ${remaining>0 ? `
+        <div class="debt-pay-row">
+          <input type="number" placeholder="Số tiền vừa trả/nhận" id="pay-${d.id}">
+          <select id="payWallet-${d.id}" style="flex:0 0 auto;width:auto;">
+            ${wallets.map(w=>`<option value="${w.id}">${w.icon} ${w.name}</option>`).join('')}
+          </select>
+          <button data-id="${d.id}" class="debt-pay-btn">Ghi nhận</button>
+        </div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.debt-del').forEach(btn=>{
+    btn.onclick = async ()=>{
+      debts = debts.filter(d=>d.id!==btn.dataset.id);
+      await saveDebts();
+      render();
+    };
+  });
+  listEl.querySelectorAll('.debt-pay-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      const input = document.getElementById('pay-'+id);
+      const amt = Math.round(parseFloat(input.value) || 0);
+      if(amt <= 0){ input.focus(); return; }
+      const d = debts.find(x=>x.id===id);
+      const walletId = document.getElementById('payWallet-'+id).value;
+      const applied = Math.min(amt, d.total - d.paid);
+      d.paid = Math.min(d.total, d.paid + amt);
+      await saveDebts();
+
+      const tx = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        type: d.direction === 'toi_no' ? 'expense' : 'income',
+        cat: 'tra_no',
+        walletId,
+        amount: applied,
+        date: todayStr(),
+        note: (d.direction === 'toi_no' ? 'Trả nợ: ' : 'Thu nợ: ') + d.name
+      };
+      transactions.push(tx);
+      await saveData();
+
+      render();
+    };
+  });
+}
+
+function renderFixedBody(container){
+  const total = fixedExpenses.reduce((s,f)=> s + f.amount, 0);
+  const mk = monthKey(new Date());
+  const paidCount = fixedExpenses.filter(f=> (f.paidMonths||[]).includes(mk)).length;
+
+  container.innerHTML = `
+    <div class="balance-card">
+      <div class="balance-label">Tổng cố định mỗi tháng</div>
+      <div class="balance-value">${fmt(total)}</div>
+      <div class="balance-row">
+        <div class="mini income">
+          <div class="mini-label">✓ Đã thanh toán tháng này</div>
+          <div class="mini-value">${paidCount}/${fixedExpenses.length}</div>
+        </div>
+        <div class="mini expense">
+          <div class="mini-label">↑ Còn chưa thanh toán</div>
+          <div class="mini-value">${fmt(fixedExpenses.filter(f=>!(f.paidMonths||[]).includes(mk)).reduce((s,f)=>s+f.amount,0))}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Thêm khoản cố định</h2>
+      <label>Tên (VD: Tiền nhà, Internet, Gym)</label>
+      <input type="text" id="fxName" placeholder="Tên khoản chi">
+      <label>Danh mục</label>
+      <div class="cat-grid" id="fxCatGrid"></div>
+      <label>Số tiền mỗi tháng (đ)</label>
+      <input type="number" id="fxAmount" placeholder="0">
+      <label>Ngày thu phí hàng tháng (1-31)</label>
+      <input type="number" id="fxDay" placeholder="VD: 5" min="1" max="31">
+      <label>Trả từ ví</label>
+      <div class="wallet-select" id="fxWalletSelect"></div>
+      <div class="sheet-actions">
+        <button class="btn save" id="btnAddFixed" style="flex:1;">Thêm khoản cố định</button>
+      </div>
+    </div>
+
+    <div id="fixedList"></div>
+  `;
+
+  let fxCat = categories.expense[0].id;
+  const grid = document.getElementById('fxCatGrid');
+  function buildFxCatGrid(){
+    const cats = allCats('expense');
+    grid.innerHTML = cats.map(c=>`
+      <button type="button" class="cat-btn ${c.id===fxCat?'active':''}" data-id="${c.id}">
+        <span class="ic">${c.icon}</span>${c.name}
+      </button>
+    `).join('');
+    grid.querySelectorAll('.cat-btn').forEach(b=>{
+      b.onclick = ()=>{ fxCat = b.dataset.id; buildFxCatGrid(); };
+    });
+  }
+  buildFxCatGrid();
+
+  let fxWallet = wallets[0].id;
+  const walletWrap = document.getElementById('fxWalletSelect');
+  function buildFxWallet(){
+    walletWrap.innerHTML = wallets.map(w=>`
+      <button type="button" class="wallet-chip ${w.id===fxWallet?'active':''}" data-id="${w.id}">${w.icon} ${w.name}</button>
+    `).join('');
+    walletWrap.querySelectorAll('.wallet-chip').forEach(b=>{
+      b.onclick = ()=>{ fxWallet = b.dataset.id; buildFxWallet(); };
+    });
+  }
+  buildFxWallet();
+
+  document.getElementById('btnAddFixed').onclick = async ()=>{
+    const nameInput = document.getElementById('fxName');
+    const name = nameInput.value.trim();
+    const amount = Math.round(parseFloat(document.getElementById('fxAmount').value) || 0);
+    if(!name || amount <= 0){
+      (!name ? nameInput : document.getElementById('fxAmount')).focus();
+      return;
+    }
+    let dueDay = Math.round(parseFloat(document.getElementById('fxDay').value) || 1);
+    dueDay = Math.min(31, Math.max(1, dueDay));
+    const id = 'fx_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    fixedExpenses.push({ id, name, cat: fxCat, amount, dueDay, walletId: fxWallet, paidMonths: [] });
+    await saveFixedExpenses();
+    render();
+  };
+
+  const listEl = document.getElementById('fixedList');
+  if(fixedExpenses.length === 0){
+    listEl.innerHTML = `<div class="tx-empty">Chưa có khoản chi cố định nào.<br>Thêm các khoản như tiền nhà, internet, gym, trả góp hàng tháng...</div>`;
+    return;
+  }
+  listEl.innerHTML = fixedExpenses.slice().sort((a,b)=>a.dueDay-b.dueDay).map(f=>{
+    const cat = findCat(f.cat);
+    const wallet = findWallet(f.walletId);
+    const isPaid = (f.paidMonths||[]).includes(mk);
+    return `
+      <div class="fixed-card">
+        <div class="fixed-ic" style="background:${cat.color}22;color:${cat.color};">${cat.icon}</div>
+        <div class="fixed-info">
+          <div class="fixed-name">${escapeHtml(f.name)}</div>
+          <div class="fixed-sub">Ngày ${f.dueDay} hàng tháng · ${wallet.icon} ${escapeHtml(wallet.name)}</div>
+        </div>
+        <div class="fixed-actions">
+          <div class="fixed-amount">${fmt(f.amount)}</div>
+          <button class="fixed-pay-btn ${isPaid?'paid':'unpaid'}" data-id="${f.id}" ${isPaid?'disabled':''}>${isPaid?'Đã trả ✓':'Đánh dấu đã trả'}</button>
+        </div>
+        <button class="fixed-del" data-id="${f.id}" aria-label="Xoá khoản cố định">🗑</button>
+      </div>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.fixed-pay-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const f = fixedExpenses.find(x=>x.id===btn.dataset.id);
+      if(!f || (f.paidMonths||[]).includes(mk)) return;
+      f.paidMonths = f.paidMonths || [];
+      f.paidMonths.push(mk);
+      await saveFixedExpenses();
+
+      const tx = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        type: 'expense',
+        cat: f.cat,
+        walletId: f.walletId,
+        amount: f.amount,
+        date: todayStr(),
+        note: 'Cố định: ' + f.name
+      };
+      transactions.push(tx);
+      await saveData();
+
+      render();
+    };
+  });
+  listEl.querySelectorAll('.fixed-del').forEach(btn=>{
+    btn.onclick = async ()=>{
+      fixedExpenses = fixedExpenses.filter(f=>f.id!==btn.dataset.id);
+      await saveFixedExpenses();
+      render();
+    };
+  });
+}
+
+function renderJars(){
+  const app = document.getElementById('app');
+  const totalPct = jars.reduce((s,j)=>s+j.pct,0);
+  const totalIncome = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+
+  app.innerHTML = `
+    <h1>🏺 Quy tắc 6 chiếc lọ</h1>
+    <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">Phân bổ thu nhập vào từng lọ theo tỉ lệ. Tuỳ chỉnh tên, icon và % theo ý bạn.</div>
+
+    <div class="jar-total-row">
+      <div>
+        <div class="label">Tổng thu nhập đã ghi</div>
+        <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Dùng để tính số tiền mỗi lọ</div>
+      </div>
+      <div class="val">${fmt(totalIncome)}</div>
+    </div>
+
+    <div class="jar-total-row">
+      <div class="label">Tổng % đã phân bổ</div>
+      <div class="val ${totalPct===100?'ok':totalPct>100?'over':''}">${totalPct}% ${totalPct===100?'✓':totalPct>100?'⚠ Quá 100%':'— Còn '+(100-totalPct)+'%'}</div>
+    </div>
+    <div class="pct-bar"><div class="pct-bar-fill" style="width:${Math.min(100,totalPct)}%;background:${totalPct>100?'#D85A30':totalPct===100?'#1D9E75':'#378ADD'};"></div></div>
+
+    <div class="jar-grid" id="jarGrid"></div>
+
+    <div class="card">
+      <h2>Thêm lọ mới</h2>
+      <label>Tên lọ</label>
+      <input type="text" id="jarName" placeholder="VD: Quỹ khẩn cấp">
+      <label>Tỉ lệ (%)</label>
+      <input type="number" id="jarPct" placeholder="VD: 10" min="1" max="100">
+      <label>Icon (bấm để đổi)</label>
+      <div style="font-size:28px;cursor:pointer;padding:8px 0;" id="jarIconPick">🏺</div>
+      <div class="sheet-actions" style="margin-top:8px;">
+        <button class="btn save" id="btnAddJar" style="flex:1;">Thêm lọ</button>
+      </div>
+    </div>
+  `;
+
+  const jarIcons = ['🏺','💰','📈','🎉','📚','🤝','🐷','🏠','🚗','✈️','🎓','💊','🎯','🌱','🎨','🔧'];
+  let jarIconIdx = 0;
+  document.getElementById('jarIconPick').onclick = ()=>{
+    jarIconIdx = (jarIconIdx+1) % jarIcons.length;
+    document.getElementById('jarIconPick').textContent = jarIcons[jarIconIdx];
+  };
+
+  document.getElementById('btnAddJar').onclick = async ()=>{
+    const name = document.getElementById('jarName').value.trim();
+    const pct = Math.round(parseFloat(document.getElementById('jarPct').value)||0);
+    if(!name || pct <= 0){ return; }
+    const palette = ['#534AB7','#1D9E75','#D85A30','#D4537E','#378ADD','#888780','#639922','#BA7517'];
+    const color = palette[jars.length % palette.length];
+    jars.push({ id:'jar_'+Date.now().toString(36), name, icon: jarIcons[jarIconIdx], pct, color });
+    await saveJars();
+    render();
+  };
+
+  const grid = document.getElementById('jarGrid');
+  grid.innerHTML = jars.map(j=>{
+    const amount = Math.round(totalIncome * j.pct / 100);
+    return `
+      <div class="jar-item">
+        <button class="jar-del" data-id="${j.id}" aria-label="Xoá lọ">✕</button>
+        <span class="jar-emoji">${j.icon}</span>
+        <div class="jar-name">${escapeHtml(j.name)}</div>
+        <div class="jar-pct" style="color:${j.color};">${j.pct}%</div>
+        <div class="jar-amount">${fmt(amount)}</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:8px;justify-content:center;">
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="-5" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;">−5</button>
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="-1" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 7px;cursor:pointer;font-size:13px;">−1</button>
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="1" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 7px;cursor:pointer;font-size:13px;">+1</button>
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="5" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;">+5</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.jar-del').forEach(btn=>{
+    btn.onclick = async ()=>{
+      jars = jars.filter(j=>j.id!==btn.dataset.id);
+      await saveJars();
+      render();
+    };
+  });
+  grid.querySelectorAll('.jar-pct-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const j = jars.find(x=>x.id===btn.dataset.id);
+      if(!j) return;
+      j.pct = Math.max(1, Math.min(100, j.pct + parseInt(btn.dataset.delta)));
+      await saveJars();
+      render();
+    };
+  });
+}
+
+function renderCatFixed(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <h1>🏷️ Danh mục & cố định</h1>
+    <div class="section-toggle">
+      <button type="button" id="cfCats" class="income ${catFixedView==='cats'?'active':''}">Danh mục</button>
+      <button type="button" id="cfFixed" class="income ${catFixedView==='fixed'?'active':''}">Cố định hàng tháng</button>
+    </div>
+    <div id="cfBody"></div>
+  `;
+  document.getElementById('cfCats').onclick = ()=>{ catFixedView='cats'; render(); };
+  document.getElementById('cfFixed').onclick = ()=>{ catFixedView='fixed'; render(); };
+  const body = document.getElementById('cfBody');
+  if(catFixedView === 'cats') renderCatsBody(body);
+  else renderFixedBody(body);
+}
+
+function deleteTx(id){
+  transactions = transactions.filter(t=>t.id!==id);
+  saveData();
+  render();
+}
+
+function openSheet(){
+  editingId = null;
+  currentType = 'expense';
+  currentCat = categories.expense[0].id;
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fNote').value = '';
+  document.getElementById('fDate').value = todayStr();
+  updateTypeUI();
+  buildCatGrid();
+  buildWalletSelect();
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+function buildWalletSelect(){
+  const wrap = document.getElementById('walletSelect');
+  if(!wallets.find(w=>w.id===currentWallet)) currentWallet = wallets[0].id;
+  wrap.innerHTML = wallets.map(w=>`
+    <button type="button" class="wallet-chip ${w.id===currentWallet?'active':''}" data-id="${w.id}">${w.icon} ${w.name}</button>
+  `).join('');
+  wrap.querySelectorAll('.wallet-chip').forEach(b=>{
+    b.onclick = ()=>{ currentWallet = b.dataset.id; buildWalletSelect(); };
+  });
+}
+
+function closeSheet(){
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+function updateTypeUI(){
+  document.getElementById('typeExpense').classList.toggle('active', currentType==='expense');
+  document.getElementById('typeIncome').classList.toggle('active', currentType==='income');
+}
+
+function buildCatGrid(){
+  const grid = document.getElementById('catGrid');
+  const cats = allCats(currentType);
+  if(!cats.find(c=>c.id===currentCat)) currentCat = cats[0].id;
+  grid.innerHTML = cats.map(c=>`
+    <button type="button" class="cat-btn ${c.id===currentCat?'active':''}" data-id="${c.id}">
+      <span class="ic">${c.icon}</span>${c.name}
+    </button>
+  `).join('');
+  grid.querySelectorAll('.cat-btn').forEach(b=>{
+    b.onclick = ()=>{ currentCat = b.dataset.id; buildCatGrid(); };
+  });
+}
+
+document.getElementById('fabAdd').onclick = openSheet;
+document.getElementById('tabHome').onclick = ()=>{ currentTab='home'; render(); };
+document.getElementById('tabJars').onclick = ()=>{ currentTab='jars'; render(); };
+document.getElementById('tabCatFixed').onclick = ()=>{ currentTab='catfixed'; render(); };
+document.getElementById('tabDebts').onclick = ()=>{ currentTab='debts'; render(); };
+document.getElementById('tabWallets').onclick = ()=>{ currentTab='wallets'; render(); };
+document.getElementById('btnCancel').onclick = closeSheet;
+document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeSheet(); };
+
+document.getElementById('typeExpense').onclick = ()=>{ currentType='expense'; updateTypeUI(); buildCatGrid(); };
+document.getElementById('typeIncome').onclick = ()=>{ currentType='income'; updateTypeUI(); buildCatGrid(); };
+
+document.getElementById('btnSave').onclick = async ()=>{
+  const amount = parseFloat(document.getElementById('fAmount').value);
+  const date = document.getElementById('fDate').value || todayStr();
+  const note = document.getElementById('fNote').value.trim();
+  if(!amount || amount <= 0){
+    document.getElementById('fAmount').focus();
+    return;
+  }
+  const tx = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    type: currentType,
+    cat: currentCat,
+    walletId: currentWallet,
+    amount: Math.round(amount),
+    date,
+    note
+  };
+  transactions.push(tx);
+  await saveData();
+  closeSheet();
+  render();
+};
+
+loadData();
+</script>
+</body>
+</html>
