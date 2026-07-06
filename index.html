@@ -327,7 +327,7 @@
       <span class="tic">🏠</span>Tổng quan
     </button>
     <button class="tab-btn" id="tabJars" data-tab="jars">
-      <span class="tic">🏺</span>6 lọ
+      <span class="tic">🏺</span>Phân bổ
     </button>
     <button class="tab-btn" id="tabCatFixed" data-tab="catfixed">
       <span class="tic">🔁</span>Cố định
@@ -369,6 +369,11 @@
 
     <label>Ghi chú (tuỳ chọn)</label>
     <input type="text" id="fNote" placeholder="VD: Ăn trưa với bạn">
+
+    <div id="jarSelectWrap" style="display:none;">
+      <label>Tính vào lọ (tuỳ chọn)</label>
+      <div class="wallet-select" id="jarSelect"></div>
+    </div>
 
     <div class="sheet-actions">
       <button class="btn cancel" id="btnCancel">Huỷ</button>
@@ -447,6 +452,7 @@ let catSection = 'expense';
 let currentType = 'expense';
 let currentCat = DEFAULT_CATS.expense[0].id;
 let currentWallet = 'cash';
+let currentJar = '';
 let editingId = null;
 let viewMonth = new Date();
 let pieChart = null, barChart = null;
@@ -1188,26 +1194,39 @@ function renderJars(){
   const app = document.getElementById('app');
   const totalPct = jars.reduce((s,j)=>s+j.pct,0);
   const totalIncome = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalSpent = transactions.filter(t=>t.type==='expense' && t.jarId).reduce((s,t)=>s+t.amount,0);
+
+  // spent per jar
+  const spentByJar = {};
+  transactions.filter(t=>t.type==='expense' && t.jarId).forEach(t=>{
+    spentByJar[t.jarId] = (spentByJar[t.jarId]||0) + t.amount;
+  });
 
   app.innerHTML = `
-    <h1>🏺 Quy tắc 6 chiếc lọ</h1>
-    <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">Phân bổ thu nhập vào từng lọ theo tỉ lệ. Tuỳ chỉnh tên, icon và % theo ý bạn.</div>
+    <h1>🏺 Phân bổ thu nhập</h1>
 
-    <div class="jar-total-row">
-      <div>
-        <div class="label">Tổng thu nhập đã ghi</div>
-        <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Dùng để tính số tiền mỗi lọ</div>
+    <div class="balance-card">
+      <div class="balance-label">Tổng thu nhập</div>
+      <div class="balance-value">${fmt(totalIncome)}</div>
+      <div class="balance-row">
+        <div class="mini expense">
+          <div class="mini-label">↑ Đã chi (có gắn lọ)</div>
+          <div class="mini-value">${fmt(totalSpent)}</div>
+        </div>
+        <div class="mini income">
+          <div class="mini-label">↓ Còn lại</div>
+          <div class="mini-value">${fmt(Math.max(0, totalIncome - totalSpent))}</div>
+        </div>
       </div>
-      <div class="val">${fmt(totalIncome)}</div>
     </div>
 
     <div class="jar-total-row">
-      <div class="label">Tổng % đã phân bổ</div>
+      <div class="label">Tổng % phân bổ</div>
       <div class="val ${totalPct===100?'ok':totalPct>100?'over':''}">${totalPct}% ${totalPct===100?'✓':totalPct>100?'⚠ Quá 100%':'— Còn '+(100-totalPct)+'%'}</div>
     </div>
     <div class="pct-bar"><div class="pct-bar-fill" style="width:${Math.min(100,totalPct)}%;background:${totalPct>100?'#D85A30':totalPct===100?'#1D9E75':'#378ADD'};"></div></div>
 
-    <div class="jar-grid" id="jarGrid"></div>
+    <div id="jarGrid"></div>
 
     <div class="card">
       <h2>Thêm lọ mới</h2>
@@ -1243,19 +1262,34 @@ function renderJars(){
 
   const grid = document.getElementById('jarGrid');
   grid.innerHTML = jars.map(j=>{
-    const amount = Math.round(totalIncome * j.pct / 100);
+    const allocated = Math.round(totalIncome * j.pct / 100);
+    const spent = spentByJar[j.id] || 0;
+    const remaining = Math.max(0, allocated - spent);
+    const pctSpent = allocated > 0 ? Math.min(100, Math.round(spent / allocated * 100)) : 0;
+    const over = spent > allocated;
     return `
-      <div class="jar-item">
-        <button class="jar-del" data-id="${j.id}" aria-label="Xoá lọ">✕</button>
-        <span class="jar-emoji">${j.icon}</span>
-        <div class="jar-name">${escapeHtml(j.name)}</div>
-        <div class="jar-pct" style="color:${j.color};">${j.pct}%</div>
-        <div class="jar-amount">${fmt(amount)}</div>
-        <div style="display:flex;align-items:center;gap:4px;margin-top:8px;justify-content:center;">
-          <button class="jar-pct-btn" data-id="${j.id}" data-delta="-5" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;">−5</button>
-          <button class="jar-pct-btn" data-id="${j.id}" data-delta="-1" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 7px;cursor:pointer;font-size:13px;">−1</button>
-          <button class="jar-pct-btn" data-id="${j.id}" data-delta="1" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 7px;cursor:pointer;font-size:13px;">+1</button>
-          <button class="jar-pct-btn" data-id="${j.id}" data-delta="5" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px;">+5</button>
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:${j.color}22;color:${j.color};display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">${j.icon}</div>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:14.5px;">${escapeHtml(j.name)}</div>
+            <div style="font-size:12px;color:var(--ink-soft);">${j.pct}% thu nhập · ${fmt(allocated)}</div>
+          </div>
+          <button class="jar-del" data-id="${j.id}" style="position:static;font-size:15px;color:var(--ink-soft);background:none;border:none;cursor:pointer;">✕</button>
+        </div>
+        <div style="height:7px;border-radius:4px;background:var(--bg);overflow:hidden;margin-bottom:8px;">
+          <div style="height:100%;border-radius:4px;width:${pctSpent}%;background:${over?'#D85A30':j.color};transition:width .3s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;">
+          <span style="color:${over?'var(--expense)':'var(--ink-soft)'};">Đã chi: <b style="color:${over?'var(--expense)':'var(--ink)'};">${fmt(spent)}</b></span>
+          <span style="color:${over?'var(--expense)':'var(--ink-soft)'};">${over?'⚠ Vượt '+fmt(spent-allocated):'Còn lại: '}<b style="color:${over?'var(--expense)':'var(--income)'};">${over?'':fmt(remaining)}</b></span>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:10px;justify-content:center;">
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="-5" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;color:var(--ink-soft);">−5%</button>
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="-1" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px;color:var(--ink-soft);">−1%</button>
+          <span style="font-size:15px;font-weight:700;color:${j.color};padding:0 6px;line-height:1.8;">${j.pct}%</span>
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="1" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px;color:var(--ink-soft);">+1%</button>
+          <button class="jar-pct-btn" data-id="${j.id}" data-delta="5" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;color:var(--ink-soft);">+5%</button>
         </div>
       </div>
     `;
@@ -1305,6 +1339,7 @@ function deleteTx(id){
 function openSheet(){
   editingId = null;
   currentType = 'expense';
+  currentJar = '';
   currentCat = categories.expense[0].id;
   document.getElementById('fAmount').value = '';
   document.getElementById('fNote').value = '';
@@ -1312,6 +1347,7 @@ function openSheet(){
   updateTypeUI();
   buildCatGrid();
   buildWalletSelect();
+  buildJarSelect();
   document.getElementById('overlay').classList.remove('hidden');
 }
 
@@ -1326,6 +1362,20 @@ function buildWalletSelect(){
   });
 }
 
+function buildJarSelect(){
+  const wrap = document.getElementById('jarSelect');
+  const wrapOuter = document.getElementById('jarSelectWrap');
+  if(currentType !== 'expense'){ wrapOuter.style.display='none'; return; }
+  wrapOuter.style.display='';
+  wrap.innerHTML = `<button type="button" class="wallet-chip ${currentJar===''?'active':''}" data-id="">Không chọn</button>` +
+    jars.map(j=>`
+      <button type="button" class="wallet-chip ${j.id===currentJar?'active':''}" data-id="${j.id}">${j.icon} ${j.name}</button>
+    `).join('');
+  wrap.querySelectorAll('.wallet-chip').forEach(b=>{
+    b.onclick = ()=>{ currentJar = b.dataset.id; buildJarSelect(); };
+  });
+}
+
 function closeSheet(){
   document.getElementById('overlay').classList.add('hidden');
 }
@@ -1333,6 +1383,7 @@ function closeSheet(){
 function updateTypeUI(){
   document.getElementById('typeExpense').classList.toggle('active', currentType==='expense');
   document.getElementById('typeIncome').classList.toggle('active', currentType==='income');
+  buildJarSelect();
 }
 
 function buildCatGrid(){
@@ -1374,6 +1425,7 @@ document.getElementById('btnSave').onclick = async ()=>{
     type: currentType,
     cat: currentCat,
     walletId: currentWallet,
+    jarId: currentJar || '',
     amount: Math.round(amount),
     date,
     note
