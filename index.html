@@ -251,7 +251,26 @@
   }
   .fixed-pay-btn.unpaid{background:var(--expense-soft);color:var(--expense);}
   .fixed-pay-btn.paid{background:var(--income-soft);color:var(--income);}
+  .fixed-log-btn{
+    border:none;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;
+    background:var(--accent-soft);color:var(--accent);margin-top:4px;
+  }
+  .fixed-log-btn:disabled{background:var(--bg);color:var(--ink-soft);opacity:0.7;cursor:default;}
   .fixed-del{background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;}
+  .fixed-check-row{
+    display:flex;align-items:center;gap:6px;cursor:pointer;
+    padding:5px 9px;border-radius:8px;font-size:11.5px;font-weight:600;white-space:nowrap;
+  }
+  .fixed-check-row input[type="checkbox"]{width:15px;height:15px;flex-shrink:0;accent-color:var(--income);cursor:pointer;}
+  .fixed-check-row.paid{background:var(--income-soft);color:var(--income);}
+  .fixed-check-row.unpaid{background:var(--expense-soft);color:var(--expense);}
+  .fixed-check-row.disabled{background:var(--bg);color:var(--ink-soft);opacity:0.7;cursor:default;}
+  .fixed-check-row.disabled input[type="checkbox"]{cursor:default;accent-color:var(--ink-soft);}
+  .fixed-status-btn{
+    border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+  }
+  .fixed-status-btn.paid{background:var(--income-soft);color:var(--income);}
+  .fixed-status-btn.unpaid{background:var(--expense-soft);color:var(--expense);}
 
   .jar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
   .jar-item{
@@ -318,12 +337,25 @@
   .cat-btn.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
 
   .sheet-actions{display:flex;gap:10px;margin-top:20px;}
+  .checkbox-row{
+    display:flex;align-items:center;gap:8px;margin:14px 0 0;
+    padding:10px 12px;border-radius:10px;background:var(--bg);
+    font-size:13.5px;color:var(--ink);cursor:pointer;
+  }
+  .checkbox-row input[type="checkbox"]{width:17px;height:17px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;}
   .btn{
     flex:1;padding:13px;border-radius:11px;border:none;font-size:15px;font-weight:600;cursor:pointer;
   }
   .btn.cancel{background:var(--bg);color:var(--ink-soft);border:1px solid var(--line);}
   .btn.save{background:var(--ink);color:#fff;}
   .loading{text-align:center;padding:40px;color:var(--ink-soft);font-size:14px;}
+  .money-row{display:flex;gap:8px;align-items:stretch;}
+  .money-row input{flex:1;}
+  .btn-000{
+    flex:0 0 auto;border:1px solid var(--line);background:var(--bg);border-radius:10px;
+    padding:0 14px;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;
+  }
+  .btn-000:active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
   .top-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;}
   .top-row h1{margin:0;}
   .btn-export{
@@ -342,13 +374,16 @@
       <span class="tic">🏠</span>Tổng quan
     </button>
     <button class="tab-btn" id="tabJars" data-tab="jars">
-      <span class="tic">🏺</span>Phân bổ
+      <span class="tic">📊</span>Phân tích
+    </button>
+    <button class="tab-btn" id="tabAdd" data-tab="add">
+      <span class="tic">➕</span>Ghi thu chi
     </button>
     <button class="tab-btn" id="tabDebts" data-tab="debts">
-      <span class="tic">📋</span>Khoản nợ
+      <span class="tic">💰</span>Ngân sách
     </button>
     <button class="tab-btn" id="tabWallets" data-tab="wallets">
-      <span class="tic">👛</span>Ví & TK
+      <span class="tic">🗂️</span>Khác
     </button>
   </div>
 </div>
@@ -368,7 +403,10 @@
     </div>
 
     <label>Số tiền (đ)</label>
-    <input type="number" id="fAmount" inputmode="numeric" placeholder="0">
+    <div class="money-row">
+      <input type="number" id="fAmount" inputmode="numeric" placeholder="0">
+      <button type="button" class="btn-000" data-target="fAmount">000</button>
+    </div>
 
     <label>Ví / Tài khoản</label>
     <div class="wallet-select" id="walletSelect"></div>
@@ -463,6 +501,7 @@ let jars = [];
 let currentTab = 'home';
 let catFixedView = 'cats';
 let debtsView = 'debts';
+let analysisView = 'fixed';
 let catSection = 'expense';
 let currentType = 'expense';
 let currentCat = DEFAULT_CATS.expense[0].id;
@@ -518,6 +557,17 @@ async function loadData(){
   if(categories.expense && !categories.expense.find(c=>c.id==='tiet_kiem')){
     categories.expense.push({id:'tiet_kiem', name:'Tiết kiệm/Hụi', icon:'🐷', color:'#639922'});
   }
+  // di dân dữ liệu tiết kiệm/hụi cũ (dạng mảng contributions/interestLog) sang mô hình số tháng
+  savings.forEach(s=>{
+    if(s.contributions !== undefined || s.interestLog !== undefined){
+      const monthsFromArr = (s.contributions||[]).length;
+      if(typeof s.monthsPaid !== 'number') s.monthsPaid = monthsFromArr;
+      delete s.contributions;
+      delete s.interestLog;
+    }
+    if(typeof s.monthsPaid !== 'number') s.monthsPaid = 0;
+    if(typeof s.monthsTotal !== 'number') s.monthsTotal = 0;
+  });
   render();
 }
 
@@ -623,6 +673,9 @@ function render(){
   } else if(currentTab === 'jars'){
     renderJars();
     document.getElementById('fabAdd').style.display = 'none';
+  } else if(currentTab === 'add'){
+    renderAddTab();
+    document.getElementById('fabAdd').style.display = 'none';
   } else if(currentTab === 'debts'){
     renderDebts();
     document.getElementById('fabAdd').style.display = 'none';
@@ -632,8 +685,23 @@ function render(){
   }
   document.getElementById('tabHome').classList.toggle('active', currentTab==='home');
   document.getElementById('tabJars').classList.toggle('active', currentTab==='jars');
+  document.getElementById('tabAdd').classList.toggle('active', currentTab==='add');
   document.getElementById('tabDebts').classList.toggle('active', currentTab==='debts');
   document.getElementById('tabWallets').classList.toggle('active', currentTab==='wallets');
+  wireThousandButtons();
+}
+
+function wireThousandButtons(){
+  document.querySelectorAll('.btn-000').forEach(btn=>{
+    btn.onclick = ()=>{
+      const inp = document.getElementById(btn.dataset.target);
+      if(!inp) return;
+      const cur = (inp.value||'').toString();
+      inp.value = cur + '000';
+      inp.dispatchEvent(new Event('input', {bubbles:true}));
+      inp.focus();
+    };
+  });
 }
 
 function renderHome(){
@@ -696,10 +764,12 @@ function renderHome(){
   renderBar();
 }
 
-function renderTxList(mtx){
-  const list = document.getElementById('txList');
+function renderTxList(mtx, containerId){
+  containerId = containerId || 'txList';
+  const list = document.getElementById(containerId);
+  if(!list) return;
   if(mtx.length === 0){
-    list.innerHTML = `<div class="tx-empty">Chưa có giao dịch nào trong tháng này.<br>Bấm nút + để thêm khoản thu hoặc chi.</div>`;
+    list.innerHTML = `<div class="tx-empty">Chưa có giao dịch nào.<br>Ghi lại khoản thu hoặc chi đầu tiên nhé.</div>`;
     return;
   }
   list.innerHTML = mtx.map(t=>{
@@ -915,8 +985,9 @@ function renderWallets(){
   const total = wallets.reduce((s,w)=> s + walletBalance(w.id), 0);
 
   app.innerHTML = `
-    <h1>👛 Ví & tài khoản</h1>
+    <h1>🗂️ Khác</h1>
 
+    <h2 style="font-size:15px;font-weight:700;margin:0 0 10px;">👛 Ví & tài khoản</h2>
     <div class="balance-card">
       <div class="balance-label">Tổng tất cả ví</div>
       <div class="balance-value">${fmt(total)}</div>
@@ -930,12 +1001,12 @@ function renderWallets(){
       <button class="btn save" style="flex:0 0 auto;padding:11px 16px;" id="btnAddWallet">Thêm</button>
     </div>
     <label>Số dư ban đầu (đ, tuỳ chọn)</label>
-    <input type="number" id="newWalletBalance" placeholder="0">
-
-    <div class="section-toggle" style="margin-top:26px;">
-      <button type="button" id="wSubCats" class="income ${catFixedView==='cats'?'active':''}">🏷️ Danh mục</button>
-      <button type="button" id="wSubFixed" class="income ${catFixedView==='fixed'?'active':''}">🔁 Chi phí cố định</button>
+    <div class="money-row">
+      <input type="number" id="newWalletBalance" placeholder="0">
+      <button type="button" class="btn-000" data-target="newWalletBalance">000</button>
     </div>
+
+    <h2 style="font-size:15px;font-weight:700;margin:28px 0 10px;">🏷️ Danh mục</h2>
     <div id="walletSubBody"></div>
   `;
 
@@ -995,11 +1066,7 @@ function renderWallets(){
     };
   });
 
-  document.getElementById('wSubCats').onclick = ()=>{ catFixedView='cats'; render(); };
-  document.getElementById('wSubFixed').onclick = ()=>{ catFixedView='fixed'; render(); };
-  const subBody = document.getElementById('walletSubBody');
-  if(catFixedView === 'fixed') renderFixedBody(subBody);
-  else renderCatsBody(subBody);
+  renderCatsBody(document.getElementById('walletSubBody'));
 }
 
 function updateWalletBalance(id){
@@ -1020,7 +1087,7 @@ function updateWalletBalance(id){
 function renderDebts(){
   const app = document.getElementById('app');
   app.innerHTML = `
-    <h1>📋 Khoản nợ & Tiết kiệm</h1>
+    <h1>💰 Ngân sách</h1>
     <div class="section-toggle">
       <button type="button" id="debtsTabDebts" class="expense ${debtsView==='debts'?'active':''}">📋 Khoản nợ</button>
       <button type="button" id="debtsTabSavings" class="income ${debtsView==='savings'?'active':''}">🐷 Tiết kiệm & Hụi</button>
@@ -1065,14 +1132,20 @@ function renderDebtsBody(app){
       <label>Loại</label>
       <div class="cat-grid" id="debtTypeGrid"></div>
       <label>Tổng số tiền (đ)</label>
-      <input type="number" id="dTotal" placeholder="0">
+      <div class="money-row">
+        <input type="number" id="dTotal" placeholder="0">
+        <button type="button" class="btn-000" data-target="dTotal">000</button>
+      </div>
       <div id="installmentWrap" style="display:none;">
         <label>Số tháng trả góp</label>
         <input type="number" id="dMonths" placeholder="VD: 12" min="1">
         <div id="monthlyPreview" style="font-size:13px;color:var(--accent);margin-top:6px;min-height:20px;"></div>
       </div>
       <label>Đã trả trước đó (đ, tuỳ chọn)</label>
-      <input type="number" id="dPaid" placeholder="0">
+      <div class="money-row">
+        <input type="number" id="dPaid" placeholder="0">
+        <button type="button" class="btn-000" data-target="dPaid">000</button>
+      </div>
       <label>Ngày đến hạn hàng tháng (1–28)</label>
       <input type="number" id="dDueDay" placeholder="VD: 15" min="1" max="28">
       <div class="sheet-actions">
@@ -1273,9 +1346,11 @@ function renderDebtsBody(app){
 }
 
 function renderSavingsBody(container){
-  const mk = monthKey(new Date());
-  const totalPrincipal = savings.reduce((s,f)=> s + (f.contributions||[]).reduce((a,c)=>a+c.amount,0), 0);
-  const totalInterest = savings.reduce((s,f)=> s + (f.interestLog||[]).reduce((a,c)=>a+c.amount,0), 0);
+  const totalPrincipal = savings.reduce((s,f)=> s + (f.monthlyAmount||0)*(f.monthsPaid||0), 0);
+  const totalInterest = savings.reduce((s,f)=>{
+    const perMonth = Math.round((f.monthlyAmount||0) * (f.interestPct||0) / 100);
+    return s + perMonth * (f.monthsPaid||0);
+  }, 0);
   const totalValue = totalPrincipal + totalInterest;
 
   container.innerHTML = `
@@ -1300,15 +1375,24 @@ function renderSavingsBody(container){
       <input type="text" id="svName" placeholder="Tên khoản tiết kiệm">
       <label>Icon (bấm để đổi)</label>
       <div style="font-size:28px;cursor:pointer;padding:8px 0;" id="svIconPick">🐷</div>
-      <label>Số tiền góp mỗi tháng (đ)</label>
-      <input type="number" id="svAmount" placeholder="VD: 3000000">
+
+      <label>Số tiền đóng 1 tháng (đ)</label>
+      <div class="money-row">
+        <input type="number" id="svAmount" placeholder="VD: 3000000">
+        <button type="button" class="btn-000" data-target="svAmount">000</button>
+      </div>
+
       <label>Lãi suất mỗi tháng (%, tuỳ chọn — để 0 nếu không có lãi)</label>
       <input type="number" id="svInterest" placeholder="VD: 1.5" step="0.1">
-      <label>Đã đóng được bao nhiêu tháng rồi? (tuỳ chọn)</label>
-      <input type="number" id="svPreMonths" placeholder="VD: 5" min="0">
+
+      <label>Số tháng đã đóng</label>
+      <input type="number" id="svMonthsPaid" placeholder="VD: 5" min="0">
+
+      <label>Số tháng phải đóng (để 0 nếu không có kỳ hạn cố định)</label>
+      <input type="number" id="svMonthsTotal" placeholder="VD: 12" min="0">
+
       <div id="svPrePreview" style="font-size:13px;color:var(--accent);margin-top:6px;min-height:20px;"></div>
-      <label>Lãi đã tích luỹ trước đó (đ, tuỳ chọn)</label>
-      <input type="number" id="svPreInterest" placeholder="0">
+
       <label>Ngày góp hàng tháng (1–28, tuỳ chọn)</label>
       <input type="number" id="svDueDay" placeholder="VD: 10" min="1" max="28">
       <label>Trả từ ví</label>
@@ -1342,13 +1426,22 @@ function renderSavingsBody(container){
 
   const calcSvPreview = ()=>{
     const amt = parseFloat(document.getElementById('svAmount').value) || 0;
-    const months = parseInt(document.getElementById('svPreMonths').value) || 0;
+    const pct = parseFloat(document.getElementById('svInterest').value) || 0;
+    const paid = parseInt(document.getElementById('svMonthsPaid').value) || 0;
     const el = document.getElementById('svPrePreview');
-    if(amt>0 && months>0) el.textContent = `→ Tương ứng: ${fmt(amt*months)} (${months} tháng × ${fmt(amt)})`;
-    else el.textContent = '';
+    if(amt>0 && paid>0){
+      const interestPerMonth = Math.round(amt * pct / 100);
+      const total = (amt + interestPerMonth) * paid;
+      el.textContent = pct>0
+        ? `→ Tổng hiện có: ${fmt(total)} (${paid} tháng × ${fmt(amt+interestPerMonth)}, gồm lãi ${fmt(interestPerMonth)}/tháng)`
+        : `→ Tổng hiện có: ${fmt(total)} (${paid} tháng × ${fmt(amt)})`;
+    } else {
+      el.textContent = '';
+    }
   };
   document.getElementById('svAmount').oninput = calcSvPreview;
-  document.getElementById('svPreMonths').oninput = calcSvPreview;
+  document.getElementById('svInterest').oninput = calcSvPreview;
+  document.getElementById('svMonthsPaid').oninput = calcSvPreview;
 
   document.getElementById('btnAddSaving').onclick = async ()=>{
     const nameInput = document.getElementById('svName');
@@ -1359,21 +1452,14 @@ function renderSavingsBody(container){
       return;
     }
     const interestPct = parseFloat(document.getElementById('svInterest').value) || 0;
-    const preMonths = Math.max(0, parseInt(document.getElementById('svPreMonths').value) || 0);
-    const preInterest = Math.round(parseFloat(document.getElementById('svPreInterest').value) || 0);
+    const monthsPaid = Math.max(0, Math.round(parseFloat(document.getElementById('svMonthsPaid').value) || 0));
+    const monthsTotal = Math.max(0, Math.round(parseFloat(document.getElementById('svMonthsTotal').value) || 0));
     let dueDay = parseInt(document.getElementById('svDueDay').value) || 0;
     if(dueDay) dueDay = Math.min(28, Math.max(1, dueDay));
     const id = 'sv_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    const contributions = monthsBack(preMonths).map(mkStr => ({
-      month: mkStr, amount: amount, date: todayStr(), note: 'Đã đóng trước khi dùng app'
-    }));
-    const interestLog = preInterest > 0
-      ? [{ month:'initial', amount:preInterest, date:todayStr(), note:'Lãi tích luỹ trước đó' }]
-      : [];
     savings.push({
       id, name, icon: svIcons[svIconIdx], monthlyAmount: amount,
-      interestPct, dueDay, walletId: svWallet,
-      contributions, interestLog
+      interestPct, monthsPaid, monthsTotal, dueDay, walletId: svWallet
     });
     await saveSavings();
     render();
@@ -1386,16 +1472,26 @@ function renderSavingsBody(container){
   }
 
   listEl.innerHTML = savings.map(f=>{
-    const contributions = f.contributions || [];
-    const interestLog = f.interestLog || [];
-    const principal = contributions.reduce((s,c)=>s+c.amount,0);
-    const interestTotal = interestLog.reduce((s,c)=>s+c.amount,0);
-    const value = principal + interestTotal;
-    const monthsPaid = contributions.filter(c=>/^\d{4}-\d{2}$/.test(c.month)).length;
-    const thisMonthPaid = contributions.some(c=>c.month===mk);
-    const thisMonthInterest = interestLog.some(c=>c.month===mk);
+    const monthlyAmount = f.monthlyAmount || 0;
+    const interestPerMonth = Math.round(monthlyAmount * (f.interestPct||0) / 100);
+    const monthsPaid = f.monthsPaid || 0;
+    const monthsTotal = f.monthsTotal || 0;
+    const totalValue = (monthlyAmount + interestPerMonth) * monthsPaid;
     const wallet = findWallet(f.walletId);
     const dueLine = f.dueDay ? `· Ngày ${f.dueDay} hàng tháng` : '';
+    const hasTerm = monthsTotal > 0;
+    const monthsRemaining = hasTerm ? Math.max(0, monthsTotal - monthsPaid) : 0;
+    const amountRemaining = monthsRemaining * monthlyAmount;
+    const isDone = hasTerm && monthsPaid >= monthsTotal;
+
+    const dotsHTML = hasTerm ? `
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin:8px 0;">
+        ${Array.from({length:monthsTotal},(_,i)=>{
+          const isPaid = i < monthsPaid;
+          return `<div style="width:20px;height:20px;border-radius:5px;font-size:9.5px;display:flex;align-items:center;justify-content:center;background:${isPaid?'#639922':'var(--line)'};color:${isPaid?'#fff':'var(--ink-soft)'};">${i+1}</div>`;
+        }).join('')}
+      </div>
+    ` : '';
 
     return `
       <div class="card" style="margin-bottom:10px;">
@@ -1403,38 +1499,33 @@ function renderSavingsBody(container){
           <div style="width:38px;height:38px;border-radius:10px;background:#63992222;color:#639922;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">${f.icon}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;font-size:14.5px;">${escapeHtml(f.name)}</div>
-            <div style="font-size:12px;color:var(--ink-soft);">${fmt(f.monthlyAmount)}/tháng${f.interestPct?` · Lãi ${f.interestPct}%/tháng`:''} ${dueLine}</div>
+            <div style="font-size:12px;color:var(--ink-soft);">${fmt(monthlyAmount)}/tháng${f.interestPct?` · Lãi ${f.interestPct}%/tháng`:''} ${dueLine}</div>
           </div>
-          <button class="sv-edit" data-id="${f.id}" style="background:none;border:none;color:var(--ink-soft);font-size:15px;cursor:pointer;padding:2px 4px;" aria-label="Điều chỉnh số tiền">✏️</button>
+          <button class="sv-edit" data-id="${f.id}" style="background:none;border:none;color:var(--ink-soft);font-size:15px;cursor:pointer;padding:2px 4px;" aria-label="Sửa khoản tiết kiệm">✏️</button>
           <button class="jar-del sv-del" data-id="${f.id}" style="position:static;font-size:15px;color:var(--ink-soft);background:none;border:none;cursor:pointer;">✕</button>
         </div>
 
         <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;">
-          <span style="color:var(--ink-soft);">Đã góp: <b style="color:var(--ink);">${monthsPaid}</b> tháng · Gốc: <b style="color:var(--ink);">${fmt(principal)}</b></span>
+          <span style="color:var(--ink-soft);">Đã đóng: <b style="color:var(--ink);">${monthsPaid}</b>${hasTerm?`/${monthsTotal}`:''} tháng</span>
+          <span style="color:var(--ink-soft);">Tổng hiện có: <b style="color:var(--accent);">${fmt(totalValue)}</b></span>
         </div>
-        ${f.interestPct ? `
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px;">
-          <span style="color:var(--ink-soft);">Lãi tích luỹ: <b style="color:var(--income);">${fmt(interestTotal)}</b></span>
-          <span style="color:var(--ink-soft);">Tổng giá trị: <b style="color:var(--accent);">${fmt(value)}</b></span>
+        ${dotsHTML}
+        ${hasTerm ? `
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;">
+          ${isDone
+            ? '<b style="color:var(--income);">Đã đóng đủ 🎉</b>'
+            : `Nếu rút bây giờ, còn phải đóng thêm <b style="color:var(--expense);">${monthsRemaining}</b> tháng (<b style="color:var(--expense);">${fmt(amountRemaining)}</b>) — tính như trả góp hàng tháng`
+          }
         </div>` : `<div style="margin-bottom:8px;"></div>`}
 
         <div class="debt-pay-row" style="margin-top:2px;">
           <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
             Góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()} · ${wallet.icon} ${escapeHtml(wallet.name)}
           </div>
-          <button data-id="${f.id}" class="sv-contribute-btn" ${thisMonthPaid?'disabled style="opacity:0.5;"':''}>
-            ${thisMonthPaid?'Đã góp ✓':'Góp tháng này'}
+          <button data-id="${f.id}" class="sv-contribute-btn" ${isDone?'disabled style="opacity:0.5;"':''}>
+            ${isDone?'Đã xong ✓':'+1 tháng'}
           </button>
         </div>
-        ${f.interestPct ? `
-        <div class="debt-pay-row" style="margin-top:8px;">
-          <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
-            Cộng lãi tháng này (${f.interestPct}% trên ${fmt(value)})
-          </div>
-          <button data-id="${f.id}" class="sv-interest-btn" ${thisMonthInterest?'disabled style="opacity:0.5;"':''}>
-            ${thisMonthInterest?'Đã cộng ✓':'Cộng lãi'}
-          </button>
-        </div>` : ''}
       </div>
     `;
   }).join('');
@@ -1448,69 +1539,56 @@ function renderSavingsBody(container){
   });
 
   listEl.querySelectorAll('.sv-edit').forEach(btn=>{
-    btn.onclick = ()=> editSavingTotals(btn.dataset.id);
+    btn.onclick = ()=> editSavingPlan(btn.dataset.id);
   });
 
   listEl.querySelectorAll('.sv-contribute-btn').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const f = savings.find(x=>x.id===btn.dataset.id);
-      if(!f || (f.contributions||[]).some(c=>c.month===mk)) return;
-      f.contributions = f.contributions || [];
-      f.contributions.push({ month: mk, amount: f.monthlyAmount, date: todayStr() });
-      await saveSavings();
-      transactions.push({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
-        type: 'expense', cat: 'tiet_kiem', walletId: f.walletId, amount: f.monthlyAmount,
-        date: todayStr(), note: 'Góp tiết kiệm/hụi: ' + f.name
-      });
-      await saveData();
-      render();
-    };
-  });
-
-  listEl.querySelectorAll('.sv-interest-btn').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const f = savings.find(x=>x.id===btn.dataset.id);
-      if(!f || (f.interestLog||[]).some(c=>c.month===mk)) return;
-      const principal = (f.contributions||[]).reduce((s,c)=>s+c.amount,0);
-      const priorInterest = (f.interestLog||[]).reduce((s,c)=>s+c.amount,0);
-      const base = principal + priorInterest;
-      const interestAmt = Math.round(base * (f.interestPct||0) / 100);
-      if(interestAmt <= 0) return;
-      f.interestLog = f.interestLog || [];
-      f.interestLog.push({ month: mk, amount: interestAmt, date: todayStr() });
-      await saveSavings();
-      render();
-    };
+    btn.onclick = ()=> contributeSavingMonth(btn.dataset.id);
   });
 }
 
-function editSavingTotals(id){
+async function contributeSavingMonth(id){
   const f = savings.find(x=>x.id===id);
   if(!f) return;
-  f.contributions = f.contributions || [];
-  f.interestLog = f.interestLog || [];
-  const principal = f.contributions.reduce((s,c)=>s+c.amount,0);
-  const interestTotal = f.interestLog.reduce((s,c)=>s+c.amount,0);
+  if(f.monthsTotal > 0 && (f.monthsPaid||0) >= f.monthsTotal) return;
+  f.monthsPaid = (f.monthsPaid||0) + 1;
+  await saveSavings();
+  transactions.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    type: 'expense', cat: 'tiet_kiem', walletId: f.walletId, amount: f.monthlyAmount,
+    date: todayStr(), note: `Góp tiết kiệm/hụi: ${f.name} (tháng ${f.monthsPaid})`
+  });
+  await saveData();
+  render();
+}
 
-  const inputP = prompt(`Tổng tiền GỐC đã góp cho "${f.name}" (hiện tại: ${fmt(principal)}):`, Math.round(principal));
-  if(inputP === null) return;
-  const newPrincipal = Math.round(parseFloat(inputP) || 0);
+function editSavingPlan(id){
+  const f = savings.find(x=>x.id===id);
+  if(!f) return;
 
-  let newInterest = interestTotal;
-  if(f.interestPct){
-    const inputI = prompt(`Tổng LÃI đã tích luỹ (hiện tại: ${fmt(interestTotal)}):`, Math.round(interestTotal));
-    if(inputI === null) return;
-    newInterest = Math.round(parseFloat(inputI) || 0);
-  }
+  const name = prompt('Tên khoản:', f.name);
+  if(name === null) return;
 
-  const deltaP = newPrincipal - principal;
-  const deltaI = newInterest - interestTotal;
-  const tag = 'adj_' + Date.now().toString(36);
-  if(deltaP !== 0) f.contributions.push({ month: tag, amount: deltaP, date: todayStr(), note: 'Điều chỉnh thủ công' });
-  if(deltaI !== 0) f.interestLog.push({ month: tag, amount: deltaI, date: todayStr(), note: 'Điều chỉnh thủ công' });
+  const amt = prompt('Số tiền đóng mỗi tháng (đ):', f.monthlyAmount);
+  if(amt === null) return;
+
+  const pct = prompt('Lãi suất mỗi tháng (%):', f.interestPct || 0);
+  if(pct === null) return;
+
+  const paid = prompt('Số tháng đã đóng:', f.monthsPaid || 0);
+  if(paid === null) return;
+
+  const total = prompt('Số tháng phải đóng (0 nếu không có kỳ hạn):', f.monthsTotal || 0);
+  if(total === null) return;
+
+  f.name = name.trim() || f.name;
+  f.monthlyAmount = Math.round(parseFloat(amt) || f.monthlyAmount);
+  f.interestPct = parseFloat(pct) || 0;
+  f.monthsPaid = Math.max(0, Math.round(parseFloat(paid) || 0));
+  f.monthsTotal = Math.max(0, Math.round(parseFloat(total) || 0));
   saveSavings().then(render);
 }
+
 
 function renderFixedBody(container){
   const total = fixedExpenses.reduce((s,f)=> s + f.amount, 0);
@@ -1540,7 +1618,10 @@ function renderFixedBody(container){
       <label>Danh mục</label>
       <div class="cat-grid" id="fxCatGrid"></div>
       <label>Số tiền mỗi tháng (đ)</label>
-      <input type="number" id="fxAmount" placeholder="0">
+      <div class="money-row">
+        <input type="number" id="fxAmount" placeholder="0">
+        <button type="button" class="btn-000" data-target="fxAmount">000</button>
+      </div>
       <label>Ngày thu phí hàng tháng (1-31)</label>
       <input type="number" id="fxDay" placeholder="VD: 5" min="1" max="31">
       <label>Trả từ ví</label>
@@ -1591,7 +1672,7 @@ function renderFixedBody(container){
     let dueDay = Math.round(parseFloat(document.getElementById('fxDay').value) || 1);
     dueDay = Math.min(31, Math.max(1, dueDay));
     const id = 'fx_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    fixedExpenses.push({ id, name, cat: fxCat, amount, dueDay, walletId: fxWallet, paidMonths: [] });
+    fixedExpenses.push({ id, name, cat: fxCat, amount, dueDay, walletId: fxWallet, paidMonths: [], loggedTx: {} });
     await saveFixedExpenses();
     render();
   };
@@ -1605,6 +1686,7 @@ function renderFixedBody(container){
     const cat = findCat(f.cat);
     const wallet = findWallet(f.walletId);
     const isPaid = (f.paidMonths||[]).includes(mk);
+    const isLogged = !!(f.loggedTx && f.loggedTx[mk]);
     return `
       <div class="fixed-card">
         <div class="fixed-ic" style="background:${cat.color}22;color:${cat.color};">${cat.icon}</div>
@@ -1614,33 +1696,68 @@ function renderFixedBody(container){
         </div>
         <div class="fixed-actions">
           <div class="fixed-amount">${fmt(f.amount)}</div>
-          <button class="fixed-pay-btn ${isPaid?'paid':'unpaid'}" data-id="${f.id}" ${isPaid?'disabled':''}>${isPaid?'Đã trả ✓':'Đánh dấu đã trả'}</button>
+          <button type="button" class="fixed-status-btn ${isPaid?'paid':'unpaid'}" data-id="${f.id}">Đã thanh toán</button>
+          <label class="fixed-check-row ${isLogged?'paid':'unpaid'} ${!isPaid?'disabled':''}">
+            <input type="checkbox" class="fixed-check" data-id="${f.id}" ${isLogged?'checked':''} ${!isPaid?'disabled':''}>
+            Ghi vào thu chi
+          </label>
         </div>
         <button class="fixed-del" data-id="${f.id}" aria-label="Xoá khoản cố định">🗑</button>
       </div>
     `;
   }).join('');
 
-  listEl.querySelectorAll('.fixed-pay-btn').forEach(btn=>{
+  listEl.querySelectorAll('.fixed-status-btn').forEach(btn=>{
     btn.onclick = async ()=>{
       const f = fixedExpenses.find(x=>x.id===btn.dataset.id);
-      if(!f || (f.paidMonths||[]).includes(mk)) return;
+      if(!f) return;
       f.paidMonths = f.paidMonths || [];
-      f.paidMonths.push(mk);
+      f.loggedTx = f.loggedTx || {};
+      if(f.paidMonths.includes(mk)){
+        f.paidMonths = f.paidMonths.filter(m=>m!==mk);
+        if(f.loggedTx[mk]){
+          transactions = transactions.filter(t=>t.id!==f.loggedTx[mk]);
+          delete f.loggedTx[mk];
+          await saveData();
+        }
+      } else {
+        f.paidMonths.push(mk);
+      }
       await saveFixedExpenses();
+      render();
+    };
+  });
 
-      const tx = {
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
-        type: 'expense',
-        cat: f.cat,
-        walletId: f.walletId,
-        amount: f.amount,
-        date: todayStr(),
-        note: 'Cố định: ' + f.name
-      };
-      transactions.push(tx);
-      await saveData();
+  listEl.querySelectorAll('.fixed-check').forEach(cb=>{
+    cb.onchange = async ()=>{
+      const f = fixedExpenses.find(x=>x.id===cb.dataset.id);
+      if(!f) return;
+      f.loggedTx = f.loggedTx || {};
 
+      if(cb.checked){
+        if(!f.loggedTx[mk]){
+          const tx = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+            type: 'expense',
+            cat: f.cat,
+            walletId: f.walletId,
+            amount: f.amount,
+            date: todayStr(),
+            note: 'Cố định: ' + f.name
+          };
+          transactions.push(tx);
+          f.loggedTx[mk] = tx.id;
+          await saveData();
+        }
+      } else {
+        if(f.loggedTx[mk]){
+          transactions = transactions.filter(t=>t.id!==f.loggedTx[mk]);
+          delete f.loggedTx[mk];
+          await saveData();
+        }
+      }
+
+      await saveFixedExpenses();
       render();
     };
   });
@@ -1655,6 +1772,22 @@ function renderFixedBody(container){
 
 function renderJars(){
   const app = document.getElementById('app');
+  app.innerHTML = `
+    <h1>📊 Phân tích</h1>
+    <div class="section-toggle">
+      <button type="button" id="analysisTabFixed" class="expense ${analysisView==='fixed'?'active':''}">🔁 Chi phí cố định</button>
+      <button type="button" id="analysisTabJars" class="income ${analysisView==='jars'?'active':''}">🏺 Phân bổ</button>
+    </div>
+    <div id="analysisBody"></div>
+  `;
+  document.getElementById('analysisTabJars').onclick = ()=>{ analysisView='jars'; render(); };
+  document.getElementById('analysisTabFixed').onclick = ()=>{ analysisView='fixed'; render(); };
+  const body = document.getElementById('analysisBody');
+  if(analysisView === 'fixed') renderFixedBody(body);
+  else renderJarsBody(body);
+}
+
+function renderJarsBody(app){
   const totalPct = jars.reduce((s,j)=>s+j.pct,0);
   const totalIncome = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const totalSpent = transactions.filter(t=>t.type==='expense' && t.jarId).reduce((s,t)=>s+t.amount,0);
@@ -1666,8 +1799,6 @@ function renderJars(){
   });
 
   app.innerHTML = `
-    <h1>🏺 Phân bổ thu nhập</h1>
-
     <div class="balance-card">
       <div class="balance-label">Tổng thu nhập</div>
       <div class="balance-value">${fmt(totalIncome)}</div>
@@ -1776,6 +1907,121 @@ function renderJars(){
   });
 }
 
+function renderAddTab(){
+  const app = document.getElementById('app');
+  const allTx = transactions.slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+
+  app.innerHTML = `
+    <h1>➕ Ghi thu chi</h1>
+
+    <div class="card">
+      <div class="type-toggle">
+        <button type="button" id="aTypeExpense" class="active expense">Chi tiền</button>
+        <button type="button" id="aTypeIncome" class="income">Thu tiền</button>
+      </div>
+
+      <label>Số tiền (đ)</label>
+      <div class="money-row">
+        <input type="number" id="aAmount" inputmode="numeric" placeholder="0">
+        <button type="button" class="btn-000" data-target="aAmount">000</button>
+      </div>
+
+      <label>Ví / Tài khoản</label>
+      <div class="wallet-select" id="aWalletSelect"></div>
+
+      <label>Danh mục</label>
+      <div class="cat-grid" id="aCatGrid"></div>
+
+      <label>Ngày</label>
+      <input type="date" id="aDate">
+
+      <label>Ghi chú (tuỳ chọn)</label>
+      <input type="text" id="aNote" placeholder="VD: Ăn trưa với bạn">
+
+      <div id="aJarSelectWrap" style="display:none;">
+        <label>Tính vào lọ (tuỳ chọn)</label>
+        <div class="wallet-select" id="aJarSelect"></div>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn save" id="aBtnSave" style="flex:1;">Lưu giao dịch</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dữ liệu đã ghi (${allTx.length})</h2>
+      <div class="tx-list" id="aTxList"></div>
+    </div>
+  `;
+
+  currentType = 'expense';
+  currentCat = categories.expense[0].id;
+  currentWallet = wallets[0] ? wallets[0].id : 'cash';
+  currentJar = '';
+  editingId = null;
+
+  document.getElementById('aDate').value = todayStr();
+  updateAddTypeUI();
+  buildAddCatGrid();
+  buildAddWalletSelect();
+  buildAddJarSelect();
+
+  document.getElementById('aTypeExpense').onclick = ()=>{ currentType='expense'; updateAddTypeUI(); buildAddCatGrid(); };
+  document.getElementById('aTypeIncome').onclick = ()=>{ currentType='income'; updateAddTypeUI(); buildAddCatGrid(); };
+
+  document.getElementById('aBtnSave').onclick = async ()=>{
+    const ok = await commitTx('a');
+    if(ok) render();
+  };
+
+  renderTxList(allTx, 'aTxList');
+}
+
+function updateAddTypeUI(){
+  document.getElementById('aTypeExpense').classList.toggle('active', currentType==='expense');
+  document.getElementById('aTypeIncome').classList.toggle('active', currentType==='income');
+  buildAddJarSelect();
+}
+
+function buildAddCatGrid(){
+  const grid = document.getElementById('aCatGrid');
+  const cats = allCats(currentType);
+  if(!cats.find(c=>c.id===currentCat)) currentCat = cats[0].id;
+  grid.innerHTML = cats.map(c=>`
+    <button type="button" class="cat-btn ${c.id===currentCat?'active':''}" data-id="${c.id}">
+      <span class="ic">${c.icon}</span>${c.name}
+    </button>
+  `).join('');
+  grid.querySelectorAll('.cat-btn').forEach(b=>{
+    b.onclick = ()=>{ currentCat = b.dataset.id; buildAddCatGrid(); };
+  });
+}
+
+function buildAddWalletSelect(){
+  const wrap = document.getElementById('aWalletSelect');
+  if(!wallets.find(w=>w.id===currentWallet)) currentWallet = wallets[0].id;
+  wrap.innerHTML = wallets.map(w=>`
+    <button type="button" class="wallet-chip ${w.id===currentWallet?'active':''}" data-id="${w.id}">${w.icon} ${w.name}</button>
+  `).join('');
+  wrap.querySelectorAll('.wallet-chip').forEach(b=>{
+    b.onclick = ()=>{ currentWallet = b.dataset.id; buildAddWalletSelect(); };
+  });
+}
+
+function buildAddJarSelect(){
+  const wrap = document.getElementById('aJarSelect');
+  const wrapOuter = document.getElementById('aJarSelectWrap');
+  if(currentType !== 'expense'){ wrapOuter.style.display='none'; return; }
+  wrapOuter.style.display='';
+  wrap.innerHTML = `<button type="button" class="wallet-chip ${currentJar===''?'active':''}" data-id="">Không chọn</button>` +
+    jars.map(j=>`
+      <button type="button" class="wallet-chip ${j.id===currentJar?'active':''}" data-id="${j.id}">${j.icon} ${j.name}</button>
+    `).join('');
+  wrap.querySelectorAll('.wallet-chip').forEach(b=>{
+    b.onclick = ()=>{ currentJar = b.dataset.id; buildAddJarSelect(); };
+  });
+}
+
 function deleteTx(id){
   transactions = transactions.filter(t=>t.id!==id);
   saveData();
@@ -1873,6 +2119,7 @@ function buildCatGrid(){
 document.getElementById('fabAdd').onclick = openSheet;
 document.getElementById('tabHome').onclick = ()=>{ currentTab='home'; render(); };
 document.getElementById('tabJars').onclick = ()=>{ currentTab='jars'; render(); };
+document.getElementById('tabAdd').onclick = ()=>{ currentTab='add'; render(); };
 document.getElementById('tabDebts').onclick = ()=>{ currentTab='debts'; render(); };
 document.getElementById('tabWallets').onclick = ()=>{ currentTab='wallets'; render(); };
 document.getElementById('btnCancel').onclick = closeSheet;
@@ -1881,13 +2128,16 @@ document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') 
 document.getElementById('typeExpense').onclick = ()=>{ currentType='expense'; updateTypeUI(); buildCatGrid(); };
 document.getElementById('typeIncome').onclick = ()=>{ currentType='income'; updateTypeUI(); buildCatGrid(); };
 
-document.getElementById('btnSave').onclick = async ()=>{
-  const amount = parseFloat(document.getElementById('fAmount').value);
-  const date = document.getElementById('fDate').value || todayStr();
-  const note = document.getElementById('fNote').value.trim();
+async function commitTx(prefix){
+  const amountEl = document.getElementById(prefix+'Amount');
+  const dateEl = document.getElementById(prefix+'Date');
+  const noteEl = document.getElementById(prefix+'Note');
+  const amount = parseFloat(amountEl.value);
+  const date = dateEl.value || todayStr();
+  const note = noteEl.value.trim();
   if(!amount || amount <= 0){
-    document.getElementById('fAmount').focus();
-    return;
+    amountEl.focus();
+    return false;
   }
   if(editingId){
     const idx = transactions.findIndex(t=>t.id===editingId);
@@ -1917,8 +2167,15 @@ document.getElementById('btnSave').onclick = async ()=>{
     transactions.push(tx);
   }
   await saveData();
-  closeSheet();
-  render();
+  return true;
+}
+
+document.getElementById('btnSave').onclick = async ()=>{
+  const ok = await commitTx('f');
+  if(ok){
+    closeSheet();
+    render();
+  }
 };
 
 loadData();
