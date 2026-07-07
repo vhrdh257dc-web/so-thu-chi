@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sổ Thu Chi</title>
 <style>
   :root{
@@ -20,12 +20,15 @@
     --radius:14px;
   }
   *{box-sizing:border-box;}
+  html{ -webkit-text-size-adjust:100%; }
   body{
     margin:0;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);
     color:var(--ink);
-    padding:72px 14px 40px;
+    padding:calc(72px + env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    min-height:100vh;
+    min-height:100dvh;
   }
   .wrap{max-width:520px;margin:0 auto;}
   h1{
@@ -113,7 +116,7 @@
   }
 
   .fab{
-    position:fixed;bottom:24px;right:50%;transform:translateX(260px);
+    position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:50%;transform:translateX(260px);
     width:54px;height:54px;border-radius:50%;
     background:var(--ink);color:#fff;border:none;font-size:26px;
     cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,0.18);
@@ -121,13 +124,16 @@
     z-index:30;
   }
   @media (max-width:560px){
-    .fab{right:18px;transform:none;}
+    .fab{right:calc(18px + env(safe-area-inset-right));transform:none;}
   }
 
   .tabbar{
     position:fixed;top:0;left:0;right:0;
     background:var(--card);border-bottom:1px solid var(--line);
     display:flex;justify-content:center;z-index:30;
+    padding-top:env(safe-area-inset-top);
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
   }
   .tabbar-inner{display:flex;width:100%;max-width:520px;overflow-x:auto;}
   .tab-btn{
@@ -221,6 +227,7 @@
   .debt-name{font-size:14.5px;font-weight:600;}
   .debt-sub{font-size:12px;color:var(--ink-soft);margin-top:1px;}
   .debt-del{background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;flex-shrink:0;}
+  .debt-edit{background:none;border:none;color:var(--ink-soft);font-size:15px;cursor:pointer;flex-shrink:0;padding:2px 4px;}
   .debt-progress{height:7px;border-radius:4px;background:var(--bg);margin:12px 0 6px;overflow:hidden;}
   .debt-progress-fill{height:100%;border-radius:4px;}
   .debt-nums{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);}
@@ -311,7 +318,7 @@
   .overlay.hidden{display:none;}
   .sheet{
     background:var(--card);width:100%;max-width:520px;
-    border-radius:18px 18px 0 0;padding:20px 18px 26px;
+    border-radius:18px 18px 0 0;padding:20px 18px calc(26px + env(safe-area-inset-bottom));
     max-height:88vh;overflow-y:auto;
   }
   .sheet h2{margin:0 0 14px;font-size:17px;}
@@ -326,7 +333,7 @@
   label{font-size:12.5px;color:var(--ink-soft);display:block;margin:12px 0 5px;}
   input[type=number],input[type=text],input[type=date]{
     width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);
-    font-size:15px;background:var(--bg);color:var(--ink);
+    font-size:16px;background:var(--bg);color:var(--ink);
   }
   .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
   .cat-btn{
@@ -468,6 +475,7 @@ const DEFAULT_CATS = {
     {id:'freelance', name:'Freelance', icon:'💻', color:'#378ADD'},
     {id:'dau_tu', name:'Đầu tư', icon:'📈', color:'#EF9F27'},
     {id:'cho_vay', name:'Được cho', icon:'🤝', color:'#D4537E'},
+    {id:'nhan_tk', name:'Nhận tiết kiệm/hụi', icon:'🐷', color:'#639922'},
     {id:'khac_thu', name:'Khác', icon:'•••', color:'#5F5E5A'},
   ]
 };
@@ -557,6 +565,9 @@ async function loadData(){
   if(categories.expense && !categories.expense.find(c=>c.id==='tiet_kiem')){
     categories.expense.push({id:'tiet_kiem', name:'Tiết kiệm/Hụi', icon:'🐷', color:'#639922'});
   }
+  if(categories.income && !categories.income.find(c=>c.id==='nhan_tk')){
+    categories.income.push({id:'nhan_tk', name:'Nhận tiết kiệm/hụi', icon:'🐷', color:'#639922'});
+  }
   // di dân dữ liệu tiết kiệm/hụi cũ (dạng mảng contributions/interestLog) sang mô hình số tháng
   savings.forEach(s=>{
     if(s.contributions !== undefined || s.interestLog !== undefined){
@@ -598,6 +609,15 @@ async function saveSavings(){
 }
 async function saveJars(){
   try{ await ref('jars').set(toObj(jars)); }catch(e){}
+}
+
+function ensureJarById(id, name, icon, color){
+  let j = jars.find(x=>x.id===id);
+  if(!j){
+    j = { id, name, icon, pct: 0, color };
+    jars.push(j);
+  }
+  return j;
 }
 
 function findWallet(id){
@@ -1278,6 +1298,7 @@ function renderDebtsBody(app){
             <div class="debt-name">${escapeHtml(d.name)}</div>
             <div class="debt-sub">${t.name} ${dueLine}</div>
           </div>
+          <button class="debt-edit" data-id="${d.id}" aria-label="Sửa khoản nợ">✏️</button>
           <button class="debt-del" data-id="${d.id}" aria-label="Xoá khoản nợ">🗑</button>
         </div>
         <div class="debt-progress"><div class="debt-progress-fill" style="width:${pct}%;background:${barColor};"></div></div>
@@ -1290,6 +1311,9 @@ function renderDebtsBody(app){
     `;
   }).join('');
 
+  listEl.querySelectorAll('.debt-edit').forEach(btn=>{
+    btn.onclick = ()=> editDebt(btn.dataset.id);
+  });
   listEl.querySelectorAll('.debt-del').forEach(btn=>{
     btn.onclick = async ()=>{
       debts = debts.filter(d=>d.id!==btn.dataset.id);
@@ -1310,11 +1334,18 @@ function renderDebtsBody(app){
       const applied = Math.min(amt, d.total - d.paid);
       d.paid = Math.min(d.total, d.paid + amt);
       await saveDebts();
+      let jarId = '';
+      if(d.direction==='toi_no'){
+        ensureJarById('jar_debt', 'Trả nợ', '💳', '#D85A30');
+        await saveJars();
+        jarId = 'jar_debt';
+      }
       transactions.push({
         id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
         type: d.direction==='toi_no'?'expense':'income',
         cat:'tra_no', walletId, amount:applied, date:todayStr(),
-        note:(d.direction==='toi_no'?'Trả nợ: ':'Thu nợ: ')+d.name
+        note:(d.direction==='toi_no'?'Trả nợ: ':'Thu nợ: ')+d.name,
+        jarId
       });
       await saveData();
       render();
@@ -1334,15 +1365,61 @@ function renderDebtsBody(app){
       d.paidMonths.push(mk);
       d.paid = Math.min(d.total, d.paid + applied);
       await saveDebts();
+      ensureJarById('jar_debt', 'Trả nợ', '💳', '#D85A30');
+      await saveJars();
       transactions.push({
         id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
         type:'expense', cat:'tra_no', walletId, amount:applied, date:todayStr(),
-        note:`Trả góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()}: `+d.name
+        note:`Trả góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()}: `+d.name,
+        jarId: 'jar_debt'
       });
       await saveData();
       render();
     };
   });
+}
+
+function editDebt(id){
+  const d = debts.find(x=>x.id===id);
+  if(!d) return;
+
+  const name = prompt('Tên khoản nợ:', d.name);
+  if(name === null) return;
+
+  const typeKeys = Object.keys(DEBT_TYPES);
+  const typeList = typeKeys.map(k=>`${k}=${DEBT_TYPES[k].name}`).join(', ');
+  const typeInput = prompt(`Loại khoản nợ (${typeList}):`, d.type);
+  if(typeInput === null) return;
+  const finalType = typeKeys.includes(typeInput.trim()) ? typeInput.trim() : d.type;
+
+  const total = prompt('Tổng số tiền (đ):', d.total);
+  if(total === null) return;
+
+  const paid = prompt('Đã trả (đ):', d.paid);
+  if(paid === null) return;
+
+  const dueDayInput = prompt('Ngày đến hạn hàng tháng (1-28):', d.dueDay || 1);
+  if(dueDayInput === null) return;
+
+  const isInstallment = finalType==='tra_gop' || finalType==='the_tin_dung';
+  let months = d.months || 0;
+  if(isInstallment){
+    const m = prompt('Số tháng trả góp:', d.months || 0);
+    if(m === null) return;
+    months = Math.max(0, Math.round(parseFloat(m) || 0));
+  } else {
+    months = 0;
+  }
+
+  const newTotal = Math.max(0, Math.round(parseFloat(total) || d.total));
+  d.name = name.trim() || d.name;
+  d.type = finalType;
+  d.total = newTotal;
+  d.paid = Math.min(newTotal, Math.max(0, Math.round(parseFloat(paid) || 0)));
+  d.dueDay = Math.min(28, Math.max(1, Math.round(parseFloat(dueDayInput) || d.dueDay || 1)));
+  d.months = months;
+
+  saveDebts().then(render);
 }
 
 function renderSavingsBody(container){
@@ -1522,10 +1599,25 @@ function renderSavingsBody(container){
           <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
             Góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()} · ${wallet.icon} ${escapeHtml(wallet.name)}
           </div>
-          <button data-id="${f.id}" class="sv-contribute-btn" ${isDone?'disabled style="opacity:0.5;"':''}>
-            ${isDone?'Đã xong ✓':'+1 tháng'}
+          <button data-id="${f.id}" class="sv-contribute-btn" ${isDone||f.received?'disabled style="opacity:0.5;"':''}>
+            ${isDone||f.received?'Đã xong ✓':'+1 tháng'}
           </button>
         </div>
+
+        ${f.received ? `
+        <div style="font-size:12.5px;color:var(--income);font-weight:600;margin-top:8px;">
+          ✓ Đã nhận tiền (${fmt((f.monthlyAmount||0)*(f.monthsTotal||0))})
+        </div>` : hasTerm ? `
+        <div class="debt-pay-row" style="margin-top:8px;">
+          <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
+            Nhận: <b style="color:var(--ink);margin-left:4px;">${fmt(monthlyAmount*monthsTotal)}</b>
+            ${monthsRemaining>0?` · thiếu ${monthsRemaining} tháng → chuyển nợ`:''}
+          </div>
+          <select id="recvWallet-${f.id}" style="flex:0 0 auto;">
+            ${wallets.map(w=>`<option value="${w.id}">${w.icon} ${w.name}</option>`).join('')}
+          </select>
+          <button data-id="${f.id}" class="sv-receive-btn">💰 Nhận tiền</button>
+        </div>` : ''}
       </div>
     `;
   }).join('');
@@ -1545,6 +1637,62 @@ function renderSavingsBody(container){
   listEl.querySelectorAll('.sv-contribute-btn').forEach(btn=>{
     btn.onclick = ()=> contributeSavingMonth(btn.dataset.id);
   });
+
+  listEl.querySelectorAll('.sv-receive-btn').forEach(btn=>{
+    btn.onclick = ()=> receiveSavingPayout(btn.dataset.id);
+  });
+}
+
+async function receiveSavingPayout(id){
+  const f = savings.find(x=>x.id===id);
+  if(!f || !(f.monthsTotal>0) || f.received) return;
+
+  const walletSel = document.getElementById('recvWallet-'+id);
+  const walletId = walletSel ? walletSel.value : (wallets[0] && wallets[0].id);
+  const totalPool = (f.monthlyAmount||0) * f.monthsTotal;
+  const monthsPaid = f.monthsPaid || 0;
+  const monthsRemaining = Math.max(0, f.monthsTotal - monthsPaid);
+  const remainingAmount = monthsRemaining * (f.monthlyAmount||0);
+
+  const confirmMsg = `Xác nhận nhận ${fmt(totalPool)} vào ví đã chọn?` +
+    (monthsRemaining>0 ? `\nBạn còn thiếu ${monthsRemaining} tháng (${fmt(remainingAmount)}), số này sẽ được chuyển thành khoản nợ trả góp.` : '');
+  if(!confirm(confirmMsg)) return;
+
+  // 1. Ghi nhận khoản thu nhận tiền hụi/tiết kiệm
+  transactions.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    type: 'income', cat: 'nhan_tk', walletId,
+    amount: totalPool, date: todayStr(),
+    note: `Nhận tiền hụi/tiết kiệm: ${f.name}`
+  });
+  await saveData();
+
+  // 2. Nếu chưa đóng đủ tháng, chuyển phần còn thiếu thành khoản nợ trả góp (cộng dồn nếu đã có)
+  if(monthsRemaining > 0){
+    let debt = debts.find(d=>d.sourceSavingId === f.id);
+    if(debt){
+      debt.total = (debt.total||0) + remainingAmount;
+      debt.months = (debt.months||0) + monthsRemaining;
+    } else {
+      debt = {
+        id: 'd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+        name: 'Hụi (trả góp): ' + f.name,
+        type: 'tra_gop', direction: 'toi_no',
+        total: remainingAmount, paid: 0,
+        dueDay: f.dueDay || 1, months: monthsRemaining, paidMonths: [],
+        sourceSavingId: f.id
+      };
+      debts.push(debt);
+    }
+    await saveDebts();
+  }
+
+  // 3. Đánh dấu khoản tiết kiệm/hụi đã nhận tiền
+  f.received = true;
+  f.monthsPaid = f.monthsTotal;
+  await saveSavings();
+
+  render();
 }
 
 async function contributeSavingMonth(id){
@@ -1553,10 +1701,13 @@ async function contributeSavingMonth(id){
   if(f.monthsTotal > 0 && (f.monthsPaid||0) >= f.monthsTotal) return;
   f.monthsPaid = (f.monthsPaid||0) + 1;
   await saveSavings();
+  ensureJarById('jar_savings', 'Tiết kiệm & Hụi', '🐷', '#639922');
+  await saveJars();
   transactions.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
     type: 'expense', cat: 'tiet_kiem', walletId: f.walletId, amount: f.monthlyAmount,
-    date: todayStr(), note: `Góp tiết kiệm/hụi: ${f.name} (tháng ${f.monthsPaid})`
+    date: todayStr(), note: `Góp tiết kiệm/hụi: ${f.name} (tháng ${f.monthsPaid})`,
+    jarId: 'jar_savings'
   });
   await saveData();
   render();
