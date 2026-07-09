@@ -2,87 +2,127 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sổ Thu Chi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#f6f5f1;
+    --bg:#f3f6f4;
     --card:#ffffff;
-    --ink:#1f2421;
-    --ink-soft:#6b6f6a;
-    --line:#e6e3da;
-    --income:#1d9e75;
-    --income-soft:#e1f5ee;
-    --expense:#d85a30;
-    --expense-soft:#faece7;
-    --accent:#534ab7;
+    --ink:#111827;
+    --ink-soft:#6b7280;
+    --ink-faint:#9ca3af;
+    --line:#e7ebe8;
+    --income:#16a34a;
+    --income-soft:#e7f7ed;
+    --expense:#e11d48;
+    --expense-soft:#fdeaee;
+    --accent:#4f46e5;
     --accent-soft:#eeedfe;
-    --radius:14px;
+    --brand:#0f9d58;
+    --brand-dark:#0a7d45;
+    --radius:16px;
+    --radius-sm:11px;
+    --shadow-sm:0 1px 2px rgba(16,24,20,0.04), 0 1px 1px rgba(16,24,20,0.03);
+    --shadow-md:0 4px 14px rgba(16,24,20,0.06), 0 1px 3px rgba(16,24,20,0.05);
+    --shadow-lg:0 12px 28px rgba(16,24,20,0.09), 0 2px 6px rgba(16,24,20,0.05);
   }
   *{box-sizing:border-box;}
-  html{ -webkit-text-size-adjust:100%; }
   body{
     margin:0;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);
+    background-image:radial-gradient(circle at 12% 0%, rgba(15,157,88,0.05), transparent 45%);
     color:var(--ink);
-    padding:calc(72px + env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
-    min-height:100vh;
-    min-height:100dvh;
+    padding:76px 14px 44px;
+    -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:520px;margin:0 auto;}
   h1{
-    font-size:22px;
-    font-weight:700;
+    font-family:'Manrope','Inter',sans-serif;
+    font-size:21px;
+    font-weight:800;
     margin:4px 0 18px;
-    letter-spacing:-0.3px;
+    letter-spacing:-0.4px;
+    display:flex;align-items:center;gap:8px;
   }
   .balance-card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:20px;
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(135deg,#0f9d58 0%,#0c8a4d 55%,#0a7245 100%);
+    border:none;
+    border-radius:20px;
+    padding:22px 22px 20px;
     margin-bottom:14px;
+    color:#fff;
+    box-shadow:0 14px 30px -10px rgba(15,157,88,0.45);
   }
-  .balance-label{font-size:13px;color:var(--ink-soft);margin-bottom:4px;}
-  .balance-value{font-size:32px;font-weight:700;letter-spacing:-0.5px;}
-  .balance-row{display:flex;gap:10px;margin-top:14px;}
+  .balance-card::before{
+    content:'';
+    position:absolute; top:-40px; right:-40px;
+    width:160px;height:160px;border-radius:50%;
+    background:rgba(255,255,255,0.08);
+  }
+  .balance-card::after{
+    content:'';
+    position:absolute; bottom:-60px; right:40px;
+    width:130px;height:130px;border-radius:50%;
+    background:rgba(255,255,255,0.06);
+  }
+  .balance-label{font-size:12.5px;color:rgba(255,255,255,0.82);margin-bottom:4px;font-weight:500;letter-spacing:.2px;}
+  .balance-value{font-family:'Manrope','Inter',sans-serif;font-size:31px;font-weight:800;letter-spacing:-0.6px;position:relative;}
+  .balance-row{display:flex;gap:10px;margin-top:16px;position:relative;}
   .mini{
     flex:1;
-    border-radius:10px;
-    padding:10px 12px;
+    border-radius:12px;
+    padding:11px 12px;
+    background:rgba(255,255,255,0.14);
+    backdrop-filter:blur(2px);
   }
-  .mini.income{background:var(--income-soft);}
-  .mini.expense{background:var(--expense-soft);}
-  .mini-label{font-size:12px;display:flex;align-items:center;gap:5px;}
-  .mini.income .mini-label{color:var(--income);}
-  .mini.expense .mini-label{color:var(--expense);}
-  .mini-value{font-size:17px;font-weight:700;margin-top:2px;}
-  .mini.income .mini-value{color:var(--income);}
-  .mini.expense .mini-value{color:var(--expense);}
+  .mini.income{background:rgba(255,255,255,0.16);}
+  .mini.expense{background:rgba(255,255,255,0.16);}
+  .mini-label{font-size:11.5px;display:flex;align-items:center;gap:5px;color:rgba(255,255,255,0.85);font-weight:500;}
+  .mini.income .mini-label{color:rgba(255,255,255,0.85);}
+  .mini.expense .mini-label{color:rgba(255,255,255,0.85);}
+  .mini-value{font-size:16.5px;font-weight:700;margin-top:3px;color:#fff;letter-spacing:-.2px;}
+  .mini.income .mini-value{color:#fff;}
+  .mini.expense .mini-value{color:#fff;}
+  .mini.savings{background:rgba(255,255,255,0.22);}
+  .balance-row .mini{padding:10px 10px;}
+  .balance-row .mini-value{font-size:14.5px;}
+  .save-rate-pill{
+    font-size:11px;font-weight:700;color:#fff;background:rgba(255,255,255,0.22);
+    padding:5px 10px;border-radius:20px;white-space:nowrap;position:relative;
+    border:1px solid rgba(255,255,255,0.3);
+  }
 
   .month-nav{
     display:flex;align-items:center;justify-content:space-between;
     margin:18px 0 10px;
   }
   .month-nav button{
-    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    background:var(--card);border:1px solid var(--line);border-radius:9px;
     width:32px;height:32px;font-size:16px;cursor:pointer;color:var(--ink);
+    box-shadow:var(--shadow-sm);transition:transform .12s ease, box-shadow .12s ease;
   }
-  .month-nav .month-label{font-weight:600;font-size:15px;}
+  .month-nav button:active{transform:scale(0.92);}
+  .month-nav .month-label{font-weight:700;font-size:14.5px;letter-spacing:-.1px;}
 
   .card{
     background:var(--card);
     border:1px solid var(--line);
     border-radius:var(--radius);
-    padding:16px;
+    padding:17px;
     margin-bottom:14px;
+    box-shadow:var(--shadow-sm);
   }
-  .card h2{font-size:14px;font-weight:600;margin:0 0 10px;color:var(--ink-soft);}
+  .card h2{font-size:13.5px;font-weight:700;margin:0 0 12px;color:var(--ink);display:flex;align-items:center;gap:6px;letter-spacing:-.1px;}
 
   .chart-wrap{position:relative;height:220px;}
   .legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:12px;font-size:12.5px;color:var(--ink-soft);}
-  .legend span.dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;}
+  .legend span.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;box-shadow:0 0 0 3px rgba(0,0,0,0.03);}
 
   .tx-list{margin-top:4px;}
   .tx-empty{
@@ -91,15 +131,18 @@
   .tx-item{
     display:flex;align-items:center;gap:10px;
     padding:11px 0;border-bottom:1px solid var(--line);
+    transition:background .12s ease;
   }
+  .tx-item:hover{background:rgba(15,157,88,0.025);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:10px;}
   .tx-item:last-child{border-bottom:none;}
   .tx-icon{
-    width:36px;height:36px;border-radius:10px;
+    width:38px;height:38px;border-radius:12px;
     display:flex;align-items:center;justify-content:center;
     font-size:17px;flex-shrink:0;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.03);
   }
   .tx-mid{flex:1;min-width:0;}
-  .tx-cat{font-size:14.5px;font-weight:600;}
+  .tx-cat{font-size:14.5px;font-weight:600;letter-spacing:-.1px;}
   .tx-note{font-size:12.5px;color:var(--ink-soft);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .tx-right{text-align:right;flex-shrink:0;}
   .tx-amount{font-weight:700;font-size:14.5px;}
@@ -116,37 +159,40 @@
   }
 
   .fab{
-    position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:50%;transform:translateX(260px);
-    width:54px;height:54px;border-radius:50%;
-    background:var(--ink);color:#fff;border:none;font-size:26px;
-    cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,0.18);
+    position:fixed;bottom:24px;right:50%;transform:translateX(260px);
+    width:56px;height:56px;border-radius:50%;
+    background:linear-gradient(135deg,#0f9d58,#0a7d45);color:#fff;border:none;font-size:26px;
+    cursor:pointer;box-shadow:0 10px 22px -4px rgba(15,157,88,0.55);
     display:flex;align-items:center;justify-content:center;
-    z-index:30;
+    z-index:30;transition:transform .15s ease, box-shadow .15s ease;
   }
+  .fab:active{transform:scale(0.93);}
   @media (max-width:560px){
-    .fab{right:calc(18px + env(safe-area-inset-right));transform:none;}
+    .fab{right:18px;transform:none;}
   }
 
   .tabbar{
     position:fixed;top:0;left:0;right:0;
-    background:var(--card);border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,0.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
     display:flex;justify-content:center;z-index:30;
-    padding-top:env(safe-area-inset-top);
-    padding-left:env(safe-area-inset-left);
-    padding-right:env(safe-area-inset-right);
+    box-shadow:0 2px 12px rgba(16,24,20,0.04);
   }
   .tabbar-inner{display:flex;width:100%;max-width:520px;overflow-x:auto;}
   .tab-btn{
-    flex:1;background:none;border:none;padding:10px 2px 9px;
+    flex:1;background:none;border:none;padding:11px 2px 9px;
     display:flex;flex-direction:column;align-items:center;gap:3px;
-    font-size:10.5px;color:var(--ink-soft);cursor:pointer;min-width:58px;
+    font-size:10.5px;color:var(--ink-faint);cursor:pointer;min-width:58px;
+    font-weight:500;border-bottom:2.5px solid transparent;
+    transition:color .15s ease;
   }
-  .tab-btn .tic{font-size:18px;}
-  .tab-btn.active{color:var(--ink);font-weight:600;border-bottom:2.5px solid var(--ink);}
+  .tab-btn .tic{font-size:18px;transition:transform .15s ease;}
+  .tab-btn.active{color:var(--brand);font-weight:700;border-bottom:2.5px solid var(--brand);}
+  .tab-btn.active .tic{transform:translateY(-1px);}
 
   .cat-list-card{
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    padding:6px 16px;margin-bottom:14px;
+    padding:6px 16px;margin-bottom:14px;box-shadow:var(--shadow-sm);
   }
   .cat-row{
     display:flex;align-items:center;gap:12px;
@@ -154,8 +200,9 @@
   }
   .cat-row:last-child{border-bottom:none;}
   .cat-row .cat-ic{
-    width:36px;height:36px;border-radius:10px;flex-shrink:0;
+    width:38px;height:38px;border-radius:12px;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;font-size:17px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.03);
   }
   .cat-row .cat-info{flex:1;min-width:0;}
   .cat-row .cat-name{font-size:14.5px;font-weight:600;}
@@ -172,19 +219,23 @@
   .add-cat-card .ic-pick{width:54px;flex-shrink:0;text-align:center;}
   .section-toggle{display:flex;gap:8px;margin-bottom:12px;}
   .section-toggle button{
-    flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--line);
-    background:var(--card);font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+    flex:1;padding:9px;border-radius:11px;border:1.5px solid var(--line);
+    background:var(--card);font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+    transition:all .15s ease;
   }
   .section-toggle button.active.expense{background:var(--expense-soft);border-color:var(--expense);color:var(--expense);}
   .section-toggle button.active.income{background:var(--income-soft);border-color:var(--income);color:var(--income);}
+  .section-toggle button.active.accent{background:var(--brand-soft,#e7f7ed);border-color:var(--brand);color:var(--brand-dark);}
 
   .wallet-card{
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;
+    box-shadow:var(--shadow-sm);
   }
   .wallet-ic{
-    width:42px;height:42px;border-radius:11px;flex-shrink:0;
+    width:44px;height:44px;border-radius:13px;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;font-size:19px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.03);
   }
   .wallet-info{flex:1;min-width:0;}
   .wallet-name{font-size:14.5px;font-weight:600;}
@@ -216,37 +267,40 @@
 
   .debt-card{
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    padding:14px 16px;margin-bottom:12px;
+    padding:15px 16px;margin-bottom:12px;box-shadow:var(--shadow-sm);
   }
   .debt-top{display:flex;align-items:flex-start;gap:10px;}
   .debt-ic{
-    width:38px;height:38px;border-radius:10px;flex-shrink:0;
+    width:40px;height:40px;border-radius:12px;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;font-size:17px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.03);
   }
   .debt-info{flex:1;min-width:0;}
   .debt-name{font-size:14.5px;font-weight:600;}
   .debt-sub{font-size:12px;color:var(--ink-soft);margin-top:1px;}
   .debt-del{background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;flex-shrink:0;}
-  .debt-edit{background:none;border:none;color:var(--ink-soft);font-size:15px;cursor:pointer;flex-shrink:0;padding:2px 4px;}
-  .debt-progress{height:7px;border-radius:4px;background:var(--bg);margin:12px 0 6px;overflow:hidden;}
+  .debt-progress{height:8px;border-radius:5px;background:var(--bg);margin:12px 0 6px;overflow:hidden;}
   .debt-progress-fill{height:100%;border-radius:4px;}
   .debt-nums{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);}
   .debt-nums b{color:var(--ink);font-weight:700;}
   .debt-pay-row{display:flex;gap:8px;margin-top:12px;}
   .debt-pay-row input{flex:1;}
   .debt-pay-row button{
-    flex:0 0 auto;padding:0 14px;border-radius:10px;border:none;
-    background:var(--ink);color:#fff;font-size:13px;font-weight:600;cursor:pointer;
+    flex:0 0 auto;padding:0 16px;border-radius:11px;border:none;
+    background:linear-gradient(135deg,#0f9d58,#0a7d45);color:#fff;font-size:13px;font-weight:700;cursor:pointer;
+    box-shadow:0 4px 10px -3px rgba(15,157,88,0.5);
   }
   .debt-paid-off{opacity:0.6;}
 
   .fixed-card{
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    padding:13px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;
+    padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;
+    box-shadow:var(--shadow-sm);
   }
   .fixed-ic{
-    width:38px;height:38px;border-radius:10px;flex-shrink:0;
+    width:40px;height:40px;border-radius:12px;flex-shrink:0;
     display:flex;align-items:center;justify-content:center;font-size:17px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.03);
   }
   .fixed-info{flex:1;min-width:0;}
   .fixed-name{font-size:14.5px;font-weight:600;}
@@ -264,29 +318,17 @@
   }
   .fixed-log-btn:disabled{background:var(--bg);color:var(--ink-soft);opacity:0.7;cursor:default;}
   .fixed-del{background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;}
-  .fixed-check-row{
-    display:flex;align-items:center;gap:6px;cursor:pointer;
-    padding:5px 9px;border-radius:8px;font-size:11.5px;font-weight:600;white-space:nowrap;
-  }
-  .fixed-check-row input[type="checkbox"]{width:15px;height:15px;flex-shrink:0;accent-color:var(--income);cursor:pointer;}
-  .fixed-check-row.paid{background:var(--income-soft);color:var(--income);}
-  .fixed-check-row.unpaid{background:var(--expense-soft);color:var(--expense);}
-  .fixed-check-row.disabled{background:var(--bg);color:var(--ink-soft);opacity:0.7;cursor:default;}
-  .fixed-check-row.disabled input[type="checkbox"]{cursor:default;accent-color:var(--ink-soft);}
-  .fixed-status-btn{
-    border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
-  }
-  .fixed-status-btn.paid{background:var(--income-soft);color:var(--income);}
-  .fixed-status-btn.unpaid{background:var(--expense-soft);color:var(--expense);}
 
   .jar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
   .jar-item{
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    padding:14px 10px 12px;text-align:center;position:relative;
+    padding:15px 10px 13px;text-align:center;position:relative;box-shadow:var(--shadow-sm);
+    transition:transform .15s ease;
   }
+  .jar-item:active{transform:scale(0.96);}
   .jar-emoji{font-size:26px;display:block;margin-bottom:6px;}
   .jar-name{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3;}
-  .jar-pct{font-size:20px;font-weight:700;margin:4px 0 2px;}
+  .jar-pct{font-family:'Manrope','Inter',sans-serif;font-size:20px;font-weight:800;margin:4px 0 2px;letter-spacing:-.3px;}
   .jar-amount{font-size:11.5px;color:var(--ink-soft);}
   .jar-del{
     position:absolute;top:6px;right:6px;
@@ -294,13 +336,14 @@
   }
   .jar-total-row{
     background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;
+    padding:15px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;
+    box-shadow:var(--shadow-sm);
   }
   .jar-total-row .label{font-size:13px;color:var(--ink-soft);}
   .jar-total-row .val{font-size:15px;font-weight:700;}
   .jar-total-row .val.ok{color:var(--income);}
   .jar-total-row .val.over{color:var(--expense);}
-  .pct-bar{height:8px;border-radius:4px;background:var(--bg);overflow:hidden;margin-bottom:14px;}
+  .pct-bar{height:9px;border-radius:5px;background:var(--bg);overflow:hidden;margin-bottom:14px;box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);}
   .pct-bar-fill{height:100%;border-radius:4px;transition:width .3s;}
 
   .jar-base-toggle{display:flex;gap:8px;margin-bottom:14px;}
@@ -311,66 +354,104 @@
   .jar-base-toggle button.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
 
   .overlay{
-    position:fixed;inset:0;background:rgba(0,0,0,0.35);
+    position:fixed;inset:0;background:rgba(10,20,15,0.42);backdrop-filter:blur(2px);
     display:flex;align-items:flex-end;justify-content:center;
     z-index:50;
   }
   .overlay.hidden{display:none;}
   .sheet{
     background:var(--card);width:100%;max-width:520px;
-    border-radius:18px 18px 0 0;padding:20px 18px calc(26px + env(safe-area-inset-bottom));
+    border-radius:22px 22px 0 0;padding:22px 18px 28px;
     max-height:88vh;overflow-y:auto;
+    box-shadow:0 -14px 40px rgba(16,24,20,0.18);
+    position:relative;
   }
-  .sheet h2{margin:0 0 14px;font-size:17px;}
+  .sheet::before{
+    content:'';position:absolute;top:9px;left:50%;transform:translateX(-50%);
+    width:38px;height:4px;border-radius:3px;background:var(--line);
+  }
+  .sheet h2{margin:6px 0 16px;font-size:17.5px;font-weight:800;font-family:'Manrope','Inter',sans-serif;letter-spacing:-.2px;}
   .type-toggle{display:flex;gap:8px;margin-bottom:14px;}
   .type-toggle button{
-    flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);
+    flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--line);
     background:var(--card);font-size:14px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+    transition:all .15s ease;
   }
-  .type-toggle button.active.expense{background:var(--expense-soft);border-color:var(--expense);color:var(--expense);}
-  .type-toggle button.active.income{background:var(--income-soft);border-color:var(--income);color:var(--income);}
+  .type-toggle button.active.expense{background:var(--expense-soft);border-color:var(--expense);color:var(--expense);box-shadow:0 3px 8px -3px rgba(225,29,72,0.25);}
+  .type-toggle button.active.income{background:var(--income-soft);border-color:var(--income);color:var(--income);box-shadow:0 3px 8px -3px rgba(22,163,74,0.25);}
 
-  label{font-size:12.5px;color:var(--ink-soft);display:block;margin:12px 0 5px;}
+  label{font-size:12px;color:var(--ink-soft);display:block;margin:14px 0 6px;font-weight:600;letter-spacing:.1px;}
   input[type=number],input[type=text],input[type=date]{
-    width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);
-    font-size:16px;background:var(--bg);color:var(--ink);
+    width:100%;padding:12px 13px;border-radius:12px;border:1.5px solid var(--line);
+    font-size:15px;background:var(--bg);color:var(--ink);
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type=number]:focus,input[type=text]:focus,input[type=date]:focus{
+    outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(15,157,88,0.12);background:#fff;
   }
   .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px;}
   .cat-btn{
-    border:1.5px solid var(--line);background:var(--card);border-radius:10px;
+    border:1.5px solid var(--line);background:var(--card);border-radius:12px;
     padding:9px 4px;font-size:11.5px;cursor:pointer;text-align:center;color:var(--ink-soft);
+    transition:all .12s ease;
   }
   .cat-btn .ic{font-size:18px;display:block;margin-bottom:3px;}
-  .cat-btn.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  .cat-btn.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700;box-shadow:0 3px 8px -3px rgba(79,70,229,0.35);}
 
-  .sheet-actions{display:flex;gap:10px;margin-top:20px;}
-  .checkbox-row{
-    display:flex;align-items:center;gap:8px;margin:14px 0 0;
-    padding:10px 12px;border-radius:10px;background:var(--bg);
-    font-size:13.5px;color:var(--ink);cursor:pointer;
-  }
-  .checkbox-row input[type="checkbox"]{width:17px;height:17px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;}
+  .sheet-actions{display:flex;gap:10px;margin-top:22px;}
   .btn{
-    flex:1;padding:13px;border-radius:11px;border:none;font-size:15px;font-weight:600;cursor:pointer;
+    flex:1;padding:14px;border-radius:13px;border:none;font-size:15px;font-weight:700;cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease;
   }
-  .btn.cancel{background:var(--bg);color:var(--ink-soft);border:1px solid var(--line);}
-  .btn.save{background:var(--ink);color:#fff;}
+  .btn:active{transform:scale(0.98);}
+  .btn.cancel{background:var(--bg);color:var(--ink-soft);border:1.5px solid var(--line);}
+  .btn.save{background:linear-gradient(135deg,#0f9d58,#0a7d45);color:#fff;box-shadow:0 8px 18px -6px rgba(15,157,88,0.55);}
   .loading{text-align:center;padding:40px;color:var(--ink-soft);font-size:14px;}
   .money-row{display:flex;gap:8px;align-items:stretch;}
   .money-row input{flex:1;}
   .btn-000{
-    flex:0 0 auto;border:1px solid var(--line);background:var(--bg);border-radius:10px;
+    flex:0 0 auto;border:1.5px solid var(--line);background:var(--bg);border-radius:12px;
     padding:0 14px;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;
+    transition:all .12s ease;
   }
   .btn-000:active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
   .top-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;}
   .top-row h1{margin:0;}
   .btn-export{
-    border:1px solid var(--line);background:var(--card);border-radius:9px;
-    padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
+    border:1.5px solid var(--line);background:var(--card);border-radius:11px;
+    padding:8px 13px;font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;
     display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;
+    box-shadow:var(--shadow-sm);transition:all .15s ease;
   }
-  .btn-export:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-export:hover{border-color:var(--brand);color:var(--brand-dark);background:var(--income-soft);}
+
+  .report-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+  .report-stat{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:12px 10px;box-shadow:var(--shadow-sm);
+  }
+  .report-stat-ic{
+    width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-size:13px;margin-bottom:8px;
+  }
+  .report-stat-label{font-size:10.5px;color:var(--ink-soft);font-weight:600;line-height:1.25;}
+  .report-stat-value{font-family:'Manrope','Inter',sans-serif;font-size:14px;font-weight:800;margin-top:3px;letter-spacing:-.2px;}
+  .report-stat-sub{font-size:10px;color:var(--ink-faint);margin-top:2px;}
+
+  .report-list-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 0;border-bottom:1px solid var(--line);
+  }
+  .report-list-row:last-child{border-bottom:none;}
+  .report-list-date{font-size:14px;font-weight:700;}
+  .report-list-sub{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
+  .report-list-amt{text-align:right;}
+  .report-list-expense{font-size:14px;font-weight:700;color:var(--expense);}
+  .report-list-income{font-size:11px;color:var(--income);margin-top:1px;font-weight:600;}
+  .report-subhead{
+    display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--ink);
+    margin:0 0 10px;letter-spacing:-.1px;
+  }
 </style>
 </head>
 <body>
@@ -475,7 +556,6 @@ const DEFAULT_CATS = {
     {id:'freelance', name:'Freelance', icon:'💻', color:'#378ADD'},
     {id:'dau_tu', name:'Đầu tư', icon:'📈', color:'#EF9F27'},
     {id:'cho_vay', name:'Được cho', icon:'🤝', color:'#D4537E'},
-    {id:'nhan_tk', name:'Nhận tiết kiệm/hụi', icon:'🐷', color:'#639922'},
     {id:'khac_thu', name:'Khác', icon:'•••', color:'#5F5E5A'},
   ]
 };
@@ -510,6 +590,8 @@ let currentTab = 'home';
 let catFixedView = 'cats';
 let debtsView = 'debts';
 let analysisView = 'fixed';
+let reportPeriod = 'daily';
+let reportChart = null;
 let catSection = 'expense';
 let currentType = 'expense';
 let currentCat = DEFAULT_CATS.expense[0].id;
@@ -565,9 +647,6 @@ async function loadData(){
   if(categories.expense && !categories.expense.find(c=>c.id==='tiet_kiem')){
     categories.expense.push({id:'tiet_kiem', name:'Tiết kiệm/Hụi', icon:'🐷', color:'#639922'});
   }
-  if(categories.income && !categories.income.find(c=>c.id==='nhan_tk')){
-    categories.income.push({id:'nhan_tk', name:'Nhận tiết kiệm/hụi', icon:'🐷', color:'#639922'});
-  }
   // di dân dữ liệu tiết kiệm/hụi cũ (dạng mảng contributions/interestLog) sang mô hình số tháng
   savings.forEach(s=>{
     if(s.contributions !== undefined || s.interestLog !== undefined){
@@ -609,15 +688,6 @@ async function saveSavings(){
 }
 async function saveJars(){
   try{ await ref('jars').set(toObj(jars)); }catch(e){}
-}
-
-function ensureJarById(id, name, icon, color){
-  let j = jars.find(x=>x.id===id);
-  if(!j){
-    j = { id, name, icon, pct: 0, color };
-    jars.push(j);
-  }
-  return j;
 }
 
 function findWallet(id){
@@ -724,12 +794,37 @@ function wireThousandButtons(){
   });
 }
 
+function pctTrend(cur, prev, positiveIsGood){
+  if(prev === 0){
+    if(cur === 0) return { text:'—', cls:'flat', arrow:'' };
+    return { text:'Mới', cls: positiveIsGood?'good':'bad', arrow:'' };
+  }
+  const pct = ((cur-prev)/Math.abs(prev))*100;
+  const up = pct >= 0;
+  const good = positiveIsGood ? up : !up;
+  return { text:`${Math.abs(pct).toFixed(1)}%`, cls: good?'good':'bad', arrow: up?'▲':'▼' };
+}
+
 function renderHome(){
   const app = document.getElementById('app');
   const mtx = monthTx().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const income = mtx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const expense = mtx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const totalAll = wallets.reduce((s,w)=> s + walletBalance(w.id), 0);
+  const savings = income - expense;
+  const savingsRate = income > 0 ? Math.round((savings/income)*100) : 0;
+
+  const prevMonthDate = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1);
+  const pmk = monthKey(prevMonthDate);
+  const ptx = transactions.filter(t=>t.date.slice(0,7)===pmk);
+  const pIncome = ptx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const pExpense = ptx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const pSavings = pIncome - pExpense;
+
+  const trIncome = pctTrend(income, pIncome, true);
+  const trExpense = pctTrend(expense, pExpense, false);
+  const trSavings = pctTrend(savings, pSavings, true);
+  const trendColor = t => t.cls==='good' ? 'var(--income)' : t.cls==='bad' ? 'var(--expense)' : 'var(--ink-faint)';
 
   app.innerHTML = `
     <div class="top-row">
@@ -738,7 +833,10 @@ function renderHome(){
     </div>
 
     <div class="balance-card">
-      <div class="balance-label">Số dư hiện tại</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="balance-label">Số dư hiện tại</div>
+        ${income>0 ? `<div class="save-rate-pill">💎 Tiết kiệm ${savingsRate}%</div>` : ''}
+      </div>
       <div class="balance-value">${fmt(totalAll)}</div>
       <div class="balance-row">
         <div class="mini income">
@@ -749,6 +847,10 @@ function renderHome(){
           <div class="mini-label">↑ Chi tháng này</div>
           <div class="mini-value">${fmt(expense)}</div>
         </div>
+        <div class="mini savings">
+          <div class="mini-label">💰 Tiết kiệm</div>
+          <div class="mini-value">${fmt(savings)}</div>
+        </div>
       </div>
     </div>
 
@@ -758,19 +860,45 @@ function renderHome(){
       <button id="nextMonth">›</button>
     </div>
 
+    <div class="report-stats">
+      <div class="report-stat">
+        <div class="report-stat-ic" style="background:var(--income-soft);color:var(--income);">📈</div>
+        <div class="report-stat-label">Thu nhập</div>
+        <div class="report-stat-value" style="color:${trendColor(trIncome)};">${trIncome.arrow} ${trIncome.text}</div>
+        <div class="report-stat-sub">so với tháng trước</div>
+      </div>
+      <div class="report-stat">
+        <div class="report-stat-ic" style="background:var(--expense-soft);color:var(--expense);">📉</div>
+        <div class="report-stat-label">Chi tiêu</div>
+        <div class="report-stat-value" style="color:${trendColor(trExpense)};">${trExpense.arrow} ${trExpense.text}</div>
+        <div class="report-stat-sub">so với tháng trước</div>
+      </div>
+      <div class="report-stat">
+        <div class="report-stat-ic" style="background:var(--accent-soft);color:var(--accent);">💎</div>
+        <div class="report-stat-label">Tiết kiệm</div>
+        <div class="report-stat-value" style="color:${trendColor(trSavings)};">${trSavings.arrow} ${trSavings.text}</div>
+        <div class="report-stat-sub">so với tháng trước</div>
+      </div>
+    </div>
+
     <div class="card">
-      <h2>Chi tiêu theo danh mục</h2>
+      <h2>🍩 Chi tiêu theo danh mục</h2>
       <div class="chart-wrap"><canvas id="pieCanvas" role="img" aria-label="Biểu đồ tròn chi tiêu theo danh mục tháng này"></canvas></div>
       <div class="legend" id="pieLegend"></div>
     </div>
 
     <div class="card">
-      <h2>Thu chi 6 tháng gần nhất</h2>
+      <h2>📊 Thu chi 6 tháng gần nhất</h2>
       <div class="chart-wrap" style="height:200px;"><canvas id="barCanvas" role="img" aria-label="Biểu đồ cột thu chi 6 tháng gần nhất"></canvas></div>
     </div>
 
     <div class="card">
-      <h2>Giao dịch tháng này (${mtx.length})</h2>
+      <h2>📅 Báo cáo theo ngày / tuần</h2>
+      <div id="reportSection"></div>
+    </div>
+
+    <div class="card">
+      <h2>🧾 Giao dịch tháng này (${mtx.length})</h2>
       <div class="tx-list" id="txList"></div>
     </div>
   `;
@@ -782,6 +910,7 @@ function renderHome(){
   renderTxList(mtx);
   renderPie(mtx);
   renderBar();
+  renderReportBody(document.getElementById('reportSection'));
 }
 
 function renderTxList(mtx, containerId){
@@ -1298,7 +1427,6 @@ function renderDebtsBody(app){
             <div class="debt-name">${escapeHtml(d.name)}</div>
             <div class="debt-sub">${t.name} ${dueLine}</div>
           </div>
-          <button class="debt-edit" data-id="${d.id}" aria-label="Sửa khoản nợ">✏️</button>
           <button class="debt-del" data-id="${d.id}" aria-label="Xoá khoản nợ">🗑</button>
         </div>
         <div class="debt-progress"><div class="debt-progress-fill" style="width:${pct}%;background:${barColor};"></div></div>
@@ -1311,9 +1439,6 @@ function renderDebtsBody(app){
     `;
   }).join('');
 
-  listEl.querySelectorAll('.debt-edit').forEach(btn=>{
-    btn.onclick = ()=> editDebt(btn.dataset.id);
-  });
   listEl.querySelectorAll('.debt-del').forEach(btn=>{
     btn.onclick = async ()=>{
       debts = debts.filter(d=>d.id!==btn.dataset.id);
@@ -1334,18 +1459,11 @@ function renderDebtsBody(app){
       const applied = Math.min(amt, d.total - d.paid);
       d.paid = Math.min(d.total, d.paid + amt);
       await saveDebts();
-      let jarId = '';
-      if(d.direction==='toi_no'){
-        ensureJarById('jar_debt', 'Trả nợ', '💳', '#D85A30');
-        await saveJars();
-        jarId = 'jar_debt';
-      }
       transactions.push({
         id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
         type: d.direction==='toi_no'?'expense':'income',
         cat:'tra_no', walletId, amount:applied, date:todayStr(),
-        note:(d.direction==='toi_no'?'Trả nợ: ':'Thu nợ: ')+d.name,
-        jarId
+        note:(d.direction==='toi_no'?'Trả nợ: ':'Thu nợ: ')+d.name
       });
       await saveData();
       render();
@@ -1365,61 +1483,15 @@ function renderDebtsBody(app){
       d.paidMonths.push(mk);
       d.paid = Math.min(d.total, d.paid + applied);
       await saveDebts();
-      ensureJarById('jar_debt', 'Trả nợ', '💳', '#D85A30');
-      await saveJars();
       transactions.push({
         id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
         type:'expense', cat:'tra_no', walletId, amount:applied, date:todayStr(),
-        note:`Trả góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()}: `+d.name,
-        jarId: 'jar_debt'
+        note:`Trả góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()}: `+d.name
       });
       await saveData();
       render();
     };
   });
-}
-
-function editDebt(id){
-  const d = debts.find(x=>x.id===id);
-  if(!d) return;
-
-  const name = prompt('Tên khoản nợ:', d.name);
-  if(name === null) return;
-
-  const typeKeys = Object.keys(DEBT_TYPES);
-  const typeList = typeKeys.map(k=>`${k}=${DEBT_TYPES[k].name}`).join(', ');
-  const typeInput = prompt(`Loại khoản nợ (${typeList}):`, d.type);
-  if(typeInput === null) return;
-  const finalType = typeKeys.includes(typeInput.trim()) ? typeInput.trim() : d.type;
-
-  const total = prompt('Tổng số tiền (đ):', d.total);
-  if(total === null) return;
-
-  const paid = prompt('Đã trả (đ):', d.paid);
-  if(paid === null) return;
-
-  const dueDayInput = prompt('Ngày đến hạn hàng tháng (1-28):', d.dueDay || 1);
-  if(dueDayInput === null) return;
-
-  const isInstallment = finalType==='tra_gop' || finalType==='the_tin_dung';
-  let months = d.months || 0;
-  if(isInstallment){
-    const m = prompt('Số tháng trả góp:', d.months || 0);
-    if(m === null) return;
-    months = Math.max(0, Math.round(parseFloat(m) || 0));
-  } else {
-    months = 0;
-  }
-
-  const newTotal = Math.max(0, Math.round(parseFloat(total) || d.total));
-  d.name = name.trim() || d.name;
-  d.type = finalType;
-  d.total = newTotal;
-  d.paid = Math.min(newTotal, Math.max(0, Math.round(parseFloat(paid) || 0)));
-  d.dueDay = Math.min(28, Math.max(1, Math.round(parseFloat(dueDayInput) || d.dueDay || 1)));
-  d.months = months;
-
-  saveDebts().then(render);
 }
 
 function renderSavingsBody(container){
@@ -1599,25 +1671,10 @@ function renderSavingsBody(container){
           <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
             Góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()} · ${wallet.icon} ${escapeHtml(wallet.name)}
           </div>
-          <button data-id="${f.id}" class="sv-contribute-btn" ${isDone||f.received?'disabled style="opacity:0.5;"':''}>
-            ${isDone||f.received?'Đã xong ✓':'+1 tháng'}
+          <button data-id="${f.id}" class="sv-contribute-btn" ${isDone?'disabled style="opacity:0.5;"':''}>
+            ${isDone?'Đã xong ✓':'+1 tháng'}
           </button>
         </div>
-
-        ${f.received ? `
-        <div style="font-size:12.5px;color:var(--income);font-weight:600;margin-top:8px;">
-          ✓ Đã nhận tiền (${fmt((f.monthlyAmount||0)*(f.monthsTotal||0))})
-        </div>` : hasTerm ? `
-        <div class="debt-pay-row" style="margin-top:8px;">
-          <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
-            Nhận: <b style="color:var(--ink);margin-left:4px;">${fmt(monthlyAmount*monthsTotal)}</b>
-            ${monthsRemaining>0?` · thiếu ${monthsRemaining} tháng → chuyển nợ`:''}
-          </div>
-          <select id="recvWallet-${f.id}" style="flex:0 0 auto;">
-            ${wallets.map(w=>`<option value="${w.id}">${w.icon} ${w.name}</option>`).join('')}
-          </select>
-          <button data-id="${f.id}" class="sv-receive-btn">💰 Nhận tiền</button>
-        </div>` : ''}
       </div>
     `;
   }).join('');
@@ -1637,62 +1694,6 @@ function renderSavingsBody(container){
   listEl.querySelectorAll('.sv-contribute-btn').forEach(btn=>{
     btn.onclick = ()=> contributeSavingMonth(btn.dataset.id);
   });
-
-  listEl.querySelectorAll('.sv-receive-btn').forEach(btn=>{
-    btn.onclick = ()=> receiveSavingPayout(btn.dataset.id);
-  });
-}
-
-async function receiveSavingPayout(id){
-  const f = savings.find(x=>x.id===id);
-  if(!f || !(f.monthsTotal>0) || f.received) return;
-
-  const walletSel = document.getElementById('recvWallet-'+id);
-  const walletId = walletSel ? walletSel.value : (wallets[0] && wallets[0].id);
-  const totalPool = (f.monthlyAmount||0) * f.monthsTotal;
-  const monthsPaid = f.monthsPaid || 0;
-  const monthsRemaining = Math.max(0, f.monthsTotal - monthsPaid);
-  const remainingAmount = monthsRemaining * (f.monthlyAmount||0);
-
-  const confirmMsg = `Xác nhận nhận ${fmt(totalPool)} vào ví đã chọn?` +
-    (monthsRemaining>0 ? `\nBạn còn thiếu ${monthsRemaining} tháng (${fmt(remainingAmount)}), số này sẽ được chuyển thành khoản nợ trả góp.` : '');
-  if(!confirm(confirmMsg)) return;
-
-  // 1. Ghi nhận khoản thu nhận tiền hụi/tiết kiệm
-  transactions.push({
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
-    type: 'income', cat: 'nhan_tk', walletId,
-    amount: totalPool, date: todayStr(),
-    note: `Nhận tiền hụi/tiết kiệm: ${f.name}`
-  });
-  await saveData();
-
-  // 2. Nếu chưa đóng đủ tháng, chuyển phần còn thiếu thành khoản nợ trả góp (cộng dồn nếu đã có)
-  if(monthsRemaining > 0){
-    let debt = debts.find(d=>d.sourceSavingId === f.id);
-    if(debt){
-      debt.total = (debt.total||0) + remainingAmount;
-      debt.months = (debt.months||0) + monthsRemaining;
-    } else {
-      debt = {
-        id: 'd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
-        name: 'Hụi (trả góp): ' + f.name,
-        type: 'tra_gop', direction: 'toi_no',
-        total: remainingAmount, paid: 0,
-        dueDay: f.dueDay || 1, months: monthsRemaining, paidMonths: [],
-        sourceSavingId: f.id
-      };
-      debts.push(debt);
-    }
-    await saveDebts();
-  }
-
-  // 3. Đánh dấu khoản tiết kiệm/hụi đã nhận tiền
-  f.received = true;
-  f.monthsPaid = f.monthsTotal;
-  await saveSavings();
-
-  render();
 }
 
 async function contributeSavingMonth(id){
@@ -1701,13 +1702,10 @@ async function contributeSavingMonth(id){
   if(f.monthsTotal > 0 && (f.monthsPaid||0) >= f.monthsTotal) return;
   f.monthsPaid = (f.monthsPaid||0) + 1;
   await saveSavings();
-  ensureJarById('jar_savings', 'Tiết kiệm & Hụi', '🐷', '#639922');
-  await saveJars();
   transactions.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
     type: 'expense', cat: 'tiet_kiem', walletId: f.walletId, amount: f.monthlyAmount,
-    date: todayStr(), note: `Góp tiết kiệm/hụi: ${f.name} (tháng ${f.monthsPaid})`,
-    jarId: 'jar_savings'
+    date: todayStr(), note: `Góp tiết kiệm/hụi: ${f.name} (tháng ${f.monthsPaid})`
   });
   await saveData();
   render();
@@ -1823,7 +1821,7 @@ function renderFixedBody(container){
     let dueDay = Math.round(parseFloat(document.getElementById('fxDay').value) || 1);
     dueDay = Math.min(31, Math.max(1, dueDay));
     const id = 'fx_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    fixedExpenses.push({ id, name, cat: fxCat, amount, dueDay, walletId: fxWallet, paidMonths: [], loggedTx: {} });
+    fixedExpenses.push({ id, name, cat: fxCat, amount, dueDay, walletId: fxWallet, paidMonths: [] });
     await saveFixedExpenses();
     render();
   };
@@ -1837,7 +1835,7 @@ function renderFixedBody(container){
     const cat = findCat(f.cat);
     const wallet = findWallet(f.walletId);
     const isPaid = (f.paidMonths||[]).includes(mk);
-    const isLogged = !!(f.loggedTx && f.loggedTx[mk]);
+    const isLogged = (f.loggedMonths||[]).includes(mk);
     return `
       <div class="fixed-card">
         <div class="fixed-ic" style="background:${cat.color}22;color:${cat.color};">${cat.icon}</div>
@@ -1847,68 +1845,48 @@ function renderFixedBody(container){
         </div>
         <div class="fixed-actions">
           <div class="fixed-amount">${fmt(f.amount)}</div>
-          <button type="button" class="fixed-status-btn ${isPaid?'paid':'unpaid'}" data-id="${f.id}">Đã thanh toán</button>
-          <label class="fixed-check-row ${isLogged?'paid':'unpaid'} ${!isPaid?'disabled':''}">
-            <input type="checkbox" class="fixed-check" data-id="${f.id}" ${isLogged?'checked':''} ${!isPaid?'disabled':''}>
-            Ghi vào thu chi
-          </label>
+          <button class="fixed-pay-btn fixed-track-btn ${isPaid?'paid':'unpaid'}" data-id="${f.id}">${isPaid?'Đã trả tháng này ✓':'Đánh dấu đã trả'}</button>
+          ${!isPaid ? `<button class="fixed-log-btn" data-id="${f.id}">➕ Ghi vào thu chi</button>` : ''}
         </div>
         <button class="fixed-del" data-id="${f.id}" aria-label="Xoá khoản cố định">🗑</button>
       </div>
     `;
   }).join('');
 
-  listEl.querySelectorAll('.fixed-status-btn').forEach(btn=>{
+  listEl.querySelectorAll('.fixed-track-btn').forEach(btn=>{
     btn.onclick = async ()=>{
       const f = fixedExpenses.find(x=>x.id===btn.dataset.id);
       if(!f) return;
       f.paidMonths = f.paidMonths || [];
-      f.loggedTx = f.loggedTx || {};
-      if(f.paidMonths.includes(mk)){
-        f.paidMonths = f.paidMonths.filter(m=>m!==mk);
-        if(f.loggedTx[mk]){
-          transactions = transactions.filter(t=>t.id!==f.loggedTx[mk]);
-          delete f.loggedTx[mk];
-          await saveData();
-        }
-      } else {
-        f.paidMonths.push(mk);
-      }
+      if(f.paidMonths.includes(mk)) f.paidMonths = f.paidMonths.filter(m=>m!==mk);
+      else f.paidMonths.push(mk);
       await saveFixedExpenses();
       render();
     };
   });
 
-  listEl.querySelectorAll('.fixed-check').forEach(cb=>{
-    cb.onchange = async ()=>{
-      const f = fixedExpenses.find(x=>x.id===cb.dataset.id);
-      if(!f) return;
-      f.loggedTx = f.loggedTx || {};
-
-      if(cb.checked){
-        if(!f.loggedTx[mk]){
-          const tx = {
-            id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
-            type: 'expense',
-            cat: f.cat,
-            walletId: f.walletId,
-            amount: f.amount,
-            date: todayStr(),
-            note: 'Cố định: ' + f.name
-          };
-          transactions.push(tx);
-          f.loggedTx[mk] = tx.id;
-          await saveData();
-        }
-      } else {
-        if(f.loggedTx[mk]){
-          transactions = transactions.filter(t=>t.id!==f.loggedTx[mk]);
-          delete f.loggedTx[mk];
-          await saveData();
-        }
-      }
-
+  listEl.querySelectorAll('.fixed-log-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const f = fixedExpenses.find(x=>x.id===btn.dataset.id);
+      if(!f || (f.loggedMonths||[]).includes(mk)) return;
+      f.loggedMonths = f.loggedMonths || [];
+      f.paidMonths = f.paidMonths || [];
+      f.loggedMonths.push(mk);
+      if(!f.paidMonths.includes(mk)) f.paidMonths.push(mk);
       await saveFixedExpenses();
+
+      const tx = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        type: 'expense',
+        cat: f.cat,
+        walletId: f.walletId,
+        amount: f.amount,
+        date: todayStr(),
+        note: 'Cố định: ' + f.name
+      };
+      transactions.push(tx);
+      await saveData();
+
       render();
     };
   });
@@ -1923,6 +1901,7 @@ function renderFixedBody(container){
 
 function renderJars(){
   const app = document.getElementById('app');
+  if(analysisView === 'report') analysisView = 'fixed';
   app.innerHTML = `
     <h1>📊 Phân tích</h1>
     <div class="section-toggle">
@@ -1936,6 +1915,133 @@ function renderJars(){
   const body = document.getElementById('analysisBody');
   if(analysisView === 'fixed') renderFixedBody(body);
   else renderJarsBody(body);
+}
+
+function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function shortDate(d){ return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+const WEEKDAY_VN = ['CN','T2','T3','T4','T5','T6','T7'];
+
+function dailyBuckets(n){
+  const out = [];
+  const now = new Date();
+  for(let i=n-1;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()-i);
+    const key = ymd(d);
+    const tx = transactions.filter(t=>t.date===key);
+    const income = tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const expense = tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    out.push({ key, d, label: shortDate(d), sub: WEEKDAY_VN[d.getDay()], income, expense, isToday: key===ymd(now) });
+  }
+  return out;
+}
+
+function weeklyBuckets(n){
+  const out = [];
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMon = (day===0? -6 : 1-day);
+  const curMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate()+diffToMon);
+  for(let i=n-1;i>=0;i--){
+    const start = new Date(curMonday.getFullYear(), curMonday.getMonth(), curMonday.getDate()-7*i);
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate()+6);
+    const startKey = ymd(start), endKey = ymd(end);
+    const tx = transactions.filter(t=>t.date>=startKey && t.date<=endKey);
+    const income = tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const expense = tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    out.push({ startKey, endKey, start, end, label:`${shortDate(start)} - ${shortDate(end)}`, income, expense, isCurrent: i===0 });
+  }
+  return out;
+}
+
+function renderReportBody(app){
+  const isDaily = reportPeriod === 'daily';
+  const buckets = isDaily ? dailyBuckets(14) : weeklyBuckets(8);
+  const chartBuckets = isDaily ? buckets.slice(-7) : buckets;
+
+  const totalExpenseAll = buckets.reduce((s,b)=>s+b.expense,0);
+  const totalIncomeAll = buckets.reduce((s,b)=>s+b.income,0);
+  const avgExpense = totalExpenseAll / buckets.length;
+  const peak = buckets.reduce((max,b)=> b.expense > (max? max.expense : -1) ? b : max, null);
+  const current = buckets[buckets.length-1];
+
+  app.innerHTML = `
+    <div class="section-toggle" style="margin-bottom:14px;">
+      <button type="button" id="repDaily" class="accent ${isDaily?'active':''}">Theo ngày</button>
+      <button type="button" id="repWeekly" class="accent ${!isDaily?'active':''}">Theo tuần</button>
+    </div>
+
+    <div class="report-stats">
+      <div class="report-stat">
+        <div class="report-stat-ic" style="background:var(--expense-soft);color:var(--expense);">🛒</div>
+        <div class="report-stat-label">${isDaily?'Chi tiêu hôm nay':'Chi tuần này'}</div>
+        <div class="report-stat-value">${fmt(current.expense)}</div>
+      </div>
+      <div class="report-stat">
+        <div class="report-stat-ic" style="background:var(--accent-soft);color:var(--accent);">📊</div>
+        <div class="report-stat-label">TB / ${isDaily?'ngày':'tuần'}</div>
+        <div class="report-stat-value">${fmt(avgExpense)}</div>
+      </div>
+      <div class="report-stat">
+        <div class="report-stat-ic" style="background:#fff4e0;color:#d97706;">🔥</div>
+        <div class="report-stat-label">Chi nhiều nhất</div>
+        <div class="report-stat-value">${fmt(peak ? peak.expense : 0)}</div>
+        <div class="report-stat-sub">${peak ? peak.label : ''}</div>
+      </div>
+    </div>
+
+    <div class="report-subhead">
+      <span>📈 Biểu đồ thu chi</span>
+      <span class="legend" style="margin:0 0 0 auto;font-size:11px;">
+        <span><span class="dot" style="background:var(--income);"></span>Thu</span>
+        <span><span class="dot" style="background:var(--expense);"></span>Chi</span>
+      </span>
+    </div>
+    <div class="chart-wrap" style="height:190px;"><canvas id="reportCanvas"></canvas></div>
+
+    <div class="report-subhead" style="margin-top:16px;">🧾 Chi tiết ${isDaily?'từng ngày':'từng tuần'}</div>
+    <div id="reportList"></div>
+  `;
+
+  document.getElementById('repDaily').onclick = ()=>{ reportPeriod='daily'; render(); };
+  document.getElementById('repWeekly').onclick = ()=>{ reportPeriod='weekly'; render(); };
+
+  const listEl = document.getElementById('reportList');
+  listEl.innerHTML = buckets.slice().reverse().map(b=>`
+    <div class="report-list-row">
+      <div>
+        <div class="report-list-date">${b.label}</div>
+        <div class="report-list-sub">${isDaily ? (b.isToday?'Hôm nay · '+b.sub:b.sub) : (b.isCurrent?'Tuần này':'')}</div>
+      </div>
+      <div class="report-list-amt">
+        <div class="report-list-expense">-${fmt(b.expense)}</div>
+        ${b.income>0 ? `<div class="report-list-income">+${fmt(b.income)}</div>` : ''}
+      </div>
+    </div>
+  `).join('') || `<div class="tx-empty">Chưa có dữ liệu</div>`;
+
+  if(reportChart) reportChart.destroy();
+  const ctx = document.getElementById('reportCanvas');
+  reportChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: chartBuckets.map(b=>b.label),
+      datasets:[
+        { label:'Thu nhập', data:chartBuckets.map(b=>b.income), backgroundColor:'#16a34a', borderRadius:5, maxBarThickness:16 },
+        { label:'Chi tiêu', data:chartBuckets.map(b=>b.expense), backgroundColor:'#e11d48', borderRadius:5, maxBarThickness:16 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        y:{ beginAtZero:true, ticks:{ callback:(v)=> (v/1000)+'k', color:'#9ca3af', font:{size:10.5} }, grid:{ color:'#eef1ef' } },
+        x:{ grid:{ display:false }, ticks:{ color:'#6b7280', font:{size:10.5} } }
+      },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label:(c)=> ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
+      }
+    }
+  });
 }
 
 function renderJarsBody(app){
