@@ -1218,13 +1218,13 @@ function renderHome(){
     </div>
 
     <div class="card">
-      <h2>📊 Thu chi 6 tháng gần nhất</h2>
-      <div class="chart-wrap" style="height:200px;"><canvas id="barCanvas" role="img" aria-label="Biểu đồ cột thu chi 6 tháng gần nhất"></canvas></div>
+      <h2>📅 Báo cáo theo ngày / tuần</h2>
+      <div id="reportSection"></div>
     </div>
 
     <div class="card">
-      <h2>📅 Báo cáo theo ngày / tuần</h2>
-      <div id="reportSection"></div>
+      <h2>📊 Thu chi 6 tháng gần nhất</h2>
+      <div class="chart-wrap" style="height:200px;"><canvas id="barCanvas" role="img" aria-label="Biểu đồ cột thu chi 6 tháng gần nhất"></canvas></div>
     </div>
 
     <div class="card">
@@ -2164,6 +2164,8 @@ function renderFixedBody(container){
       </div>
     </div>
 
+    <div id="fixedList"></div>
+
     <div class="card">
       <h2>Thêm khoản cố định</h2>
       <label>Tên (VD: Tiền nhà, Internet, Gym)</label>
@@ -2183,8 +2185,6 @@ function renderFixedBody(container){
         <button class="btn save" id="btnAddFixed" style="flex:1;">Thêm khoản cố định</button>
       </div>
     </div>
-
-    <div id="fixedList"></div>
   `;
 
   let fxCat = categories.expense[0].id;
@@ -2669,13 +2669,18 @@ function buildAddWalletSelect(){
   });
 }
 
+function jarsByUsage(){
+  const counts = {};
+  transactions.forEach(t=>{ if(t.jarId) counts[t.jarId] = (counts[t.jarId]||0) + 1; });
+  return jars.slice().sort((a,b)=> (counts[b.id]||0) - (counts[a.id]||0));
+}
+
 function buildAddJarSelect(){
   const wrap = document.getElementById('aJarSelect');
   const wrapOuter = document.getElementById('aJarSelectWrap');
   if(currentType !== 'expense'){ wrapOuter.style.display='none'; return; }
   wrapOuter.style.display='';
-  wrap.innerHTML = `<button type="button" class="wallet-chip ${currentJar===''?'active':''}" data-id="">Không chọn</button>` +
-    jars.map(j=>`
+  wrap.innerHTML = jarsByUsage().map(j=>`
       <button type="button" class="wallet-chip ${j.id===currentJar?'active':''}" data-id="${j.id}">${j.icon} ${j.name}</button>
     `).join('');
   wrap.querySelectorAll('.wallet-chip').forEach(b=>{
@@ -2743,8 +2748,7 @@ function buildJarSelect(){
   const wrapOuter = document.getElementById('jarSelectWrap');
   if(currentType !== 'expense'){ wrapOuter.style.display='none'; return; }
   wrapOuter.style.display='';
-  wrap.innerHTML = `<button type="button" class="wallet-chip ${currentJar===''?'active':''}" data-id="">Không chọn</button>` +
-    jars.map(j=>`
+  wrap.innerHTML = jarsByUsage().map(j=>`
       <button type="button" class="wallet-chip ${j.id===currentJar?'active':''}" data-id="${j.id}">${j.icon} ${j.name}</button>
     `).join('');
   wrap.querySelectorAll('.wallet-chip').forEach(b=>{
