@@ -647,6 +647,9 @@ async function loadData(){
   if(categories.expense && !categories.expense.find(c=>c.id==='tiet_kiem')){
     categories.expense.push({id:'tiet_kiem', name:'Tiết kiệm/Hụi', icon:'🐷', color:'#639922'});
   }
+  if(categories.income && !categories.income.find(c=>c.id==='lay_hui')){
+    categories.income.push({id:'lay_hui', name:'Lấy hụi/Tiết kiệm', icon:'🐷', color:'#639922'});
+  }
   // di dân dữ liệu tiết kiệm/hụi cũ (dạng mảng contributions/interestLog) sang mô hình số tháng
   savings.forEach(s=>{
     if(s.contributions !== undefined || s.interestLog !== undefined){
@@ -657,6 +660,7 @@ async function loadData(){
     }
     if(typeof s.monthsPaid !== 'number') s.monthsPaid = 0;
     if(typeof s.monthsTotal !== 'number') s.monthsTotal = 0;
+    if(typeof s.withdrawn !== 'boolean') s.withdrawn = false;
   });
   render();
 }
@@ -708,52 +712,378 @@ function monthTx(){
   return transactions.filter(t => t.date.slice(0,7) === mk);
 }
 
-function csvEscape(v){
-  const s = String(v==null?'':v);
-  if(/[",\n;]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
-  return s;
-}
+function exportReportPDF(mtx){
+  mtx = mtx || [];
+  const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const today = new Date();
+  const todayVN = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+  const periodVN = `01/${String(m+1).padStart(2,'0')}/${y} – ${String(daysInMonth).padStart(2,'0')}/${String(m+1).padStart(2,'0')}/${y}`;
 
-function exportReport(mtx){
-  // mtx: giao dịch của tháng đang xem (nếu có), export toàn bộ lịch sử kèm tổng hợp tháng hiện tại
-  const all = transactions.slice().sort((a,b)=> a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
-  const rows = [];
+  // ── tổng hợp tháng này & tháng trước ──
+  const mIncome = mtx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const mExpense = mtx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const mSavings = mtx.filter(t=>t.type==='expense' && t.cat==='tiet_kiem').reduce((s,t)=>s+t.amount,0);
+  const savingsRate = mIncome > 0 ? Math.round((mSavings/mIncome)*100) : 0;
 
-  rows.push([`Báo cáo Sổ Thu Chi — xuất ngày ${todayStr()}`]);
-  rows.push([]);
-  rows.push([`Tổng hợp ${monthLabel(viewMonth)}`]);
-  const mIncome = (mtx||[]).filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const mExpense = (mtx||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  rows.push(['Tổng thu', mIncome]);
-  rows.push(['Tổng chi', mExpense]);
-  rows.push(['Chênh lệch', mIncome - mExpense]);
-  rows.push(['Tổng số dư tất cả ví', wallets.reduce((s,w)=> s + walletBalance(w.id), 0)]);
-  rows.push([]);
-  rows.push(['Chi tiết toàn bộ giao dịch']);
-  rows.push(['Ngày','Loại','Danh mục','Ví / Tài khoản','Số tiền','Ghi chú']);
-  all.forEach(t=>{
+  const prevMonthDate = new Date(y, m-1, 1);
+  const pmk = monthKey(prevMonthDate);
+  const ptx = transactions.filter(t=>t.date.slice(0,7)===pmk);
+  const pIncome = ptx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const pExpense = ptx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const pSavings = ptx.filter(t=>t.type==='expense' && t.cat==='tiet_kiem').reduce((s,t)=>s+t.amount,0);
+
+  const trIncome = pctTrend(mIncome, pIncome, true);
+  const trExpense = pctTrend(mExpense, pExpense, false);
+  const trSavings = pctTrend(mSavings, pSavings, true);
+  const trendColorHex = t => t.cls==='good' ? '#16a34a' : t.cls==='bad' ? '#e11d48' : '#9ca3af';
+
+  // ── biểu đồ theo tuần trong tháng ──
+  let numWeeks = Math.floor(daysInMonth/7) || 1;
+  const weekBuckets = [];
+  for(let i=0;i<numWeeks;i++){
+    const startDay = i*7+1;
+    const endDay = (i===numWeeks-1) ? daysInMonth : (i+1)*7;
+    const sK = `${y}-${String(m+1).padStart(2,'0')}-${String(startDay).padStart(2,'0')}`;
+    const eK = `${y}-${String(m+1).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`;
+    const tx = transactions.filter(t=>t.date>=sK && t.date<=eK);
+    weekBuckets.push({
+      label:`Tuần ${i+1}`,
+      sub:`${String(startDay).padStart(2,'0')}/${String(m+1).padStart(2,'0')} - ${String(endDay).padStart(2,'0')}/${String(m+1).padStart(2,'0')}`,
+      income: tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0),
+      expense: tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0),
+    });
+  }
+
+  // ── phân bổ chi tiêu theo danh mục ──
+  const byCat = {};
+  mtx.filter(t=>t.type==='expense').forEach(t=>{ byCat[t.cat] = (byCat[t.cat]||0) + t.amount; });
+  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const catRows = catEntries.map(([id,val])=>{
+    const cat = findCat(id);
+    const pct = mExpense ? Math.round(val/mExpense*100) : 0;
+    return `<tr><td><span class="dot" style="background:${cat.color};"></span>${cat.icon} ${escapeHtml(cat.name)}</td><td class="num">${fmt(val)}</td><td class="num">${pct}%</td></tr>`;
+  }).join('');
+
+  // ── top 5 khoản chi lớn nhất ──
+  const topExpenses = mtx.filter(t=>t.type==='expense').slice().sort((a,b)=>b.amount-a.amount).slice(0,5);
+  const maxTopAmt = topExpenses.length ? topExpenses[0].amount : 1;
+  const topExpenseRows = topExpenses.map(t=>{
     const cat = findCat(t.cat);
-    const wallet = findWallet(t.walletId || 'cash');
-    rows.push([
-      t.date,
-      t.type==='income' ? 'Thu' : 'Chi',
-      cat.name,
-      wallet.name,
-      t.amount,
-      t.note || ''
-    ]);
-  });
+    const pct = mExpense ? (t.amount/mExpense*100) : 0;
+    const barW = Math.max(4, Math.round(t.amount/maxTopAmt*100));
+    return `<tr>
+      <td><span style="font-size:14px;">${cat.icon}</span> ${escapeHtml(t.note || cat.name)}</td>
+      <td>${escapeHtml(cat.name)}</td>
+      <td style="min-width:120px;">
+        <div style="background:#eef1ef;border-radius:5px;height:7px;overflow:hidden;margin-bottom:3px;">
+          <div style="height:100%;width:${barW}%;background:${cat.color};border-radius:5px;"></div>
+        </div>
+      </td>
+      <td class="num">${fmt(t.amount)}<div style="font-size:9.5px;color:#9ca3af;">${pct.toFixed(1)}%</div></td>
+    </tr>`;
+  }).join('');
 
-  const csv = rows.map(r => r.map(csvEscape).join(';')).join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `so-thu-chi_bao-cao_${todayStr()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // ── chi tiết thu nhập theo danh mục ──
+  const byIncomeCat = {};
+  mtx.filter(t=>t.type==='income').forEach(t=>{ byIncomeCat[t.cat] = (byIncomeCat[t.cat]||0) + t.amount; });
+  const incomeEntries = Object.entries(byIncomeCat).sort((a,b)=>b[1]-a[1]);
+  const incomeRows = incomeEntries.map(([id,val])=>{
+    const cat = findCat(id);
+    const pct = mIncome ? Math.round(val/mIncome*100) : 0;
+    return `<tr><td>${cat.icon} ${escapeHtml(cat.name)}</td><td class="num">${fmt(val)}</td><td class="num">${pct}%</td></tr>`;
+  }).join('');
+
+  // ── biến động số dư theo ngày trong tháng ──
+  const dayLabels = [], dayNet = [];
+  let running = 0;
+  const dailyPoints = [];
+  for(let d=1; d<=daysInMonth; d++){
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const tx = transactions.filter(t=>t.date===key);
+    const inc = tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    running += (inc - exp);
+    dayLabels.push(`${String(d).padStart(2,'0')}/${String(m+1).padStart(2,'0')}`);
+    dailyPoints.push(running);
+  }
+
+  // ── lịch sử giao dịch gần đây ──
+  const recentTx = mtx.slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0,10);
+  const recentRows = recentTx.map(t=>{
+    const cat = findCat(t.cat);
+    const d = new Date(t.date+'T00:00:00');
+    const dStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    return `<tr>
+      <td>${dStr}</td>
+      <td>${cat.icon} ${escapeHtml(t.note || cat.name)}</td>
+      <td>${escapeHtml(cat.name)}</td>
+      <td class="num" style="color:${t.type==='income' ? '#16a34a' : '#e11d48'};font-weight:700;">${t.type==='income'?'+':'-'}${fmt(t.amount)}</td>
+    </tr>`;
+  }).join('');
+
+  // ── nhận xét & gợi ý ──
+  const insights = [];
+  if(savingsRate >= 20){
+    insights.push(`Tuyệt vời! Bạn đã tiết kiệm được <b>${savingsRate}%</b> thu nhập trong tháng này, đạt mức khuyến nghị 20%.`);
+  } else if(mIncome > 0){
+    insights.push(`Tỷ lệ tiết kiệm tháng này là <b>${savingsRate}%</b>, hãy cố gắng đạt tối thiểu 20% để tài chính vững vàng hơn.`);
+  }
+  if(catEntries.length){
+    const [topId, topVal] = catEntries[0];
+    const topCat = findCat(topId);
+    const topPct = mExpense ? Math.round(topVal/mExpense*100) : 0;
+    insights.push(`Chi tiêu lớn nhất là <b>${escapeHtml(topCat.name)}</b> (${topPct}%). Hãy cân nhắc tối ưu khoản này nếu có thể.`);
+    if(topPct >= 30){
+      insights.push(`Khoản <b>${escapeHtml(topCat.name)}</b> đang chiếm hơn 30% chi tiêu — bạn có thể tiết kiệm thêm nếu để ý cắt giảm.`);
+    }
+  }
+  if(trExpense.cls==='bad' && trExpense.text!=='—'){
+    insights.push(`Chi tiêu tháng này ${trExpense.arrow==='▲'?'tăng':'giảm'} <b>${trExpense.text}</b> so với tháng trước, hãy theo dõi sát các khoản chi phát sinh.`);
+  }
+  if(mSavings > 0){
+    insights.push(`Nếu duy trì mức tiết kiệm hiện tại, sau 12 tháng bạn sẽ tích luỹ được khoảng <b style="color:#16a34a;">${fmt(mSavings*12)}</b>.`);
+  }
+  if(!insights.length) insights.push('Chưa đủ dữ liệu tháng này để đưa ra nhận xét. Hãy ghi chép đầy đủ hơn nhé!');
+  const insightsHTML = insights.map(i=>`<div class="insight-row"><span class="ok">✓</span><span>${i}</span></div>`).join('');
+
+  const weekLabelsJS = JSON.stringify(weekBuckets.map(w=>w.label));
+  const weekIncomeJS = JSON.stringify(weekBuckets.map(w=>Math.round(w.income/1000)));
+  const weekExpenseJS = JSON.stringify(weekBuckets.map(w=>Math.round(w.expense/1000)));
+  const catLabelsJS = JSON.stringify(catEntries.map(([id])=>findCat(id).name));
+  const catValuesJS = JSON.stringify(catEntries.map(([,v])=>v));
+  const catColorsJS = JSON.stringify(catEntries.map(([id])=>findCat(id).color));
+  const dayLabelsJS = JSON.stringify(dayLabels);
+  const dailyPointsJS = JSON.stringify(dailyPoints);
+
+  const html = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Báo cáo ${monthLabel(viewMonth)}</title>
+<style>
+  @page{ size:A4; margin:12mm 12mm; }
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#111827;font-size:11.5px;margin:0;padding:0;background:#fff;}
+  .page{page-break-after:always;padding-bottom:6px;}
+  .page:last-child{page-break-after:auto;}
+  .app-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .app-brand{display:flex;align-items:center;gap:8px;}
+  .app-brand .ic{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0f9d58,#0a7d45);display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .app-brand .name{font-weight:800;font-size:15px;letter-spacing:-.2px;}
+  .app-brand .tag{font-size:9.5px;color:#9ca3af;margin-top:1px;}
+  .app-head .period{text-align:right;font-size:10px;color:#9ca3af;}
+  .app-head .period b{display:block;font-size:15px;color:#0f9d58;margin:2px 0;}
+  .title{font-size:20px;font-weight:800;color:#0a2e1d;letter-spacing:-.4px;line-height:1.25;margin:6px 0 4px;}
+  .subtitle{font-size:11.5px;color:#6b7280;margin-bottom:16px;line-height:1.5;}
+  h2.sec{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;margin:0 0 10px;color:#111827;}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px;}
+  .stat-card{border:1px solid #e7ebe8;border-radius:12px;padding:11px 12px;background:#fbfdfc;}
+  .stat-card .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:6px;}
+  .stat-card .lb{font-size:9.5px;color:#6b7280;font-weight:700;letter-spacing:.2px;text-transform:uppercase;}
+  .stat-card .val{font-size:16px;font-weight:800;margin-top:3px;}
+  .stat-card .tr{font-size:9.5px;margin-top:3px;font-weight:600;}
+  .card-box{border:1px solid #e7ebe8;border-radius:13px;padding:13px 14px;margin-bottom:14px;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{padding:6px 7px;border-bottom:1px solid #eef1ef;text-align:left;vertical-align:middle;}
+  th{font-size:9.5px;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:.2px;}
+  td{font-size:10.8px;}
+  td.num, th.num{text-align:right;white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  tr.total td{font-weight:800;border-top:1.5px solid #d1d5db;border-bottom:none;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;}
+  .empty{color:#9ca3af;font-size:11px;padding:10px 0;}
+  .insight-row{display:flex;gap:8px;align-items:flex-start;font-size:11px;line-height:1.55;margin-bottom:8px;}
+  .insight-row .ok{color:#16a34a;font-weight:800;flex-shrink:0;}
+  .footer-page{display:flex;align-items:center;justify-content:space-between;margin-top:18px;font-size:9.5px;color:#9ca3af;}
+  .pageno{text-align:right;font-size:9.5px;color:#9ca3af;margin-top:6px;}
+  .legend-row{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:10px;color:#6b7280;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="app-head">
+    <div class="app-brand">
+      <div class="ic">🐷</div>
+      <div><div class="name">Sổ Thu Chi</div><div class="tag">Quản lý chi tiêu thông minh</div></div>
+    </div>
+    <div class="period">BÁO CÁO THÁNG<b>${String(m+1).padStart(2,'0')}/${y}</b>📅 ${periodVN}</div>
+  </div>
+
+  <div class="title">BÁO CÁO<br>THU NHẬP &amp; CHI TIÊU</div>
+  <div class="subtitle">Cái nhìn tổng quan về tình hình tài chính của bạn trong tháng ${m+1}/${y}. Xuất báo cáo ngày ${todayVN}.</div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="ic" style="background:#e7f7ed;color:#16a34a;">💵</div>
+      <div class="lb">Tổng thu nhập</div>
+      <div class="val" style="color:#16a34a;">${fmt(mIncome)}</div>
+      <div class="tr" style="color:${trendColorHex(trIncome)};">${trIncome.arrow} ${trIncome.text} so với tháng trước</div>
+    </div>
+    <div class="stat-card">
+      <div class="ic" style="background:#fdeaee;color:#e11d48;">🛒</div>
+      <div class="lb">Tổng chi tiêu</div>
+      <div class="val" style="color:#e11d48;">${fmt(mExpense)}</div>
+      <div class="tr" style="color:${trendColorHex(trExpense)};">${trExpense.arrow} ${trExpense.text} so với tháng trước</div>
+    </div>
+    <div class="stat-card">
+      <div class="ic" style="background:#eeedfe;color:#4f46e5;">🐷</div>
+      <div class="lb">Số tiền tiết kiệm</div>
+      <div class="val" style="color:#4f46e5;">${fmt(mSavings)}</div>
+      <div class="tr" style="color:${trendColorHex(trSavings)};">${trSavings.arrow} ${trSavings.text} so với tháng trước</div>
+    </div>
+    <div class="stat-card">
+      <div class="ic" style="background:#e7f7ed;color:#0f9d58;">📈</div>
+      <div class="lb">Tỷ lệ tiết kiệm</div>
+      <div class="val" style="color:#0f9d58;">${savingsRate}%</div>
+      <div class="tr" style="color:#9ca3af;">trên tổng thu nhập tháng</div>
+    </div>
+  </div>
+
+  <div class="card-box">
+    <h2 class="sec">📊 Tổng quan thu chi theo tuần</h2>
+    <div style="height:170px;"><canvas id="weekChart"></canvas></div>
+    <div class="legend-row"><span><span class="dot" style="background:#16a34a;"></span>Thu nhập</span><span><span class="dot" style="background:#e11d48;"></span>Chi tiêu</span></div>
+  </div>
+
+  <div class="pageno">1/4</div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="card-box">
+    <h2 class="sec">🍩 Phân bổ chi tiêu theo danh mục</h2>
+    ${catEntries.length ? `
+    <div style="display:flex;gap:16px;align-items:center;">
+      <div style="width:170px;height:170px;flex-shrink:0;"><canvas id="catChart"></canvas></div>
+      <table>
+        <thead><tr><th>Danh mục</th><th class="num">Số tiền</th><th class="num">Tỷ lệ</th></tr></thead>
+        <tbody>${catRows}<tr class="total"><td>TỔNG CỘNG</td><td class="num">${fmt(mExpense)}</td><td class="num">100%</td></tr></tbody>
+      </table>
+    </div>` : `<div class="empty">Chưa có khoản chi nào tháng này.</div>`}
+  </div>
+
+  <div class="card-box">
+    <h2 class="sec">⭐ Top 5 khoản chi lớn nhất</h2>
+    ${topExpenses.length ? `
+    <table>
+      <thead><tr><th>Khoản chi</th><th>Danh mục</th><th></th><th class="num">Số tiền</th></tr></thead>
+      <tbody>${topExpenseRows}</tbody>
+    </table>` : `<div class="empty">Chưa có khoản chi nào tháng này.</div>`}
+  </div>
+
+  <div class="pageno">2/4</div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page">
+  <div class="card-box">
+    <h2 class="sec">💵 Chi tiết thu nhập</h2>
+    ${incomeEntries.length ? `
+    <table>
+      <thead><tr><th>Nguồn thu</th><th class="num">Số tiền</th><th class="num">Tỷ lệ</th></tr></thead>
+      <tbody>${incomeRows}<tr class="total"><td>TỔNG CỘNG</td><td class="num">${fmt(mIncome)}</td><td class="num">100%</td></tr></tbody>
+    </table>` : `<div class="empty">Chưa có khoản thu nào tháng này.</div>`}
+  </div>
+
+  <div class="card-box">
+    <h2 class="sec">🔄 So sánh với tháng trước</h2>
+    <div class="stat-grid" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="stat-card">
+        <div class="lb">Thu nhập</div>
+        <div class="tr" style="color:${trendColorHex(trIncome)};font-size:13px;">${trIncome.arrow} ${trIncome.text}</div>
+      </div>
+      <div class="stat-card">
+        <div class="lb">Chi tiêu</div>
+        <div class="tr" style="color:${trendColorHex(trExpense)};font-size:13px;">${trExpense.arrow} ${trExpense.text}</div>
+      </div>
+      <div class="stat-card">
+        <div class="lb">Tiết kiệm</div>
+        <div class="tr" style="color:${trendColorHex(trSavings)};font-size:13px;">${trSavings.arrow} ${trSavings.text}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-box">
+    <h2 class="sec">📈 Biến động số dư trong tháng</h2>
+    <div style="height:160px;"><canvas id="balChart"></canvas></div>
+  </div>
+
+  <div class="pageno">3/4</div>
+</div>
+
+<!-- PAGE 4 -->
+<div class="page">
+  <div class="card-box">
+    <h2 class="sec">🧾 Lịch sử giao dịch gần đây</h2>
+    ${recentTx.length ? `
+    <table>
+      <thead><tr><th>Ngày</th><th>Nội dung</th><th>Danh mục</th><th class="num">Số tiền</th></tr></thead>
+      <tbody>${recentRows}</tbody>
+    </table>` : `<div class="empty">Chưa có giao dịch nào tháng này.</div>`}
+  </div>
+
+  <div class="card-box">
+    <h2 class="sec">💡 Nhận xét &amp; gợi ý</h2>
+    ${insightsHTML}
+  </div>
+
+  <div class="footer-page">
+    <div>Cảm ơn bạn đã sử dụng Sổ Thu Chi!<br>Chúc bạn quản lý tài chính hiệu quả.</div>
+    <div>4/4</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"><\/script>
+<script>
+  const fmtK = v => (v).toLocaleString('vi-VN');
+  new Chart(document.getElementById('weekChart'), {
+    type:'bar',
+    data:{
+      labels: ${weekLabelsJS},
+      datasets:[
+        { label:'Thu', data:${weekIncomeJS}, backgroundColor:'#16a34a', borderRadius:4, maxBarThickness:26 },
+        { label:'Chi', data:${weekExpenseJS}, backgroundColor:'#e11d48', borderRadius:4, maxBarThickness:26 },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, animation:false,
+      scales:{ y:{ beginAtZero:true, ticks:{ callback:v=>fmtK(v)+'k', font:{size:9.5} }, grid:{color:'#f0f2f0'} }, x:{ grid:{display:false}, ticks:{font:{size:9.5}} } },
+      plugins:{ legend:{display:false} }
+    }
+  });
+  ${catEntries.length ? `
+  new Chart(document.getElementById('catChart'), {
+    type:'doughnut',
+    data:{ labels:${catLabelsJS}, datasets:[{ data:${catValuesJS}, backgroundColor:${catColorsJS}, borderColor:'#fff', borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{display:false} } }
+  });` : ''}
+  new Chart(document.getElementById('balChart'), {
+    type:'line',
+    data:{
+      labels: ${dayLabelsJS},
+      datasets:[{ data:${dailyPointsJS}, borderColor:'#0f9d58', backgroundColor:'rgba(15,157,88,0.12)', fill:true, tension:0.35, pointRadius:0, borderWidth:2 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, animation:false,
+      scales:{ y:{ ticks:{ callback:v=>fmtK(v/1000)+'k', font:{size:9.5} }, grid:{color:'#f0f2f0'} },
+        x:{ grid:{display:false}, ticks:{ font:{size:9}, maxTicksLimit:6 } } },
+      plugins:{ legend:{display:false} }
+    }
+  });
+  window.onload = function(){ setTimeout(function(){ window.focus(); window.print(); }, 350); };
+<\/script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  if(!w){
+    alert('Trình duyệt đã chặn cửa sổ mới. Vui lòng cho phép popup để xuất PDF.');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }
 
 function render(){
@@ -811,7 +1141,7 @@ function renderHome(){
   const income = mtx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const expense = mtx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const totalAll = wallets.reduce((s,w)=> s + walletBalance(w.id), 0);
-  const savings = income - expense;
+  const savings = mtx.filter(t=>t.type==='expense' && t.cat==='tiet_kiem').reduce((s,t)=>s+t.amount,0);
   const savingsRate = income > 0 ? Math.round((savings/income)*100) : 0;
 
   const prevMonthDate = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1);
@@ -819,7 +1149,7 @@ function renderHome(){
   const ptx = transactions.filter(t=>t.date.slice(0,7)===pmk);
   const pIncome = ptx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const pExpense = ptx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const pSavings = pIncome - pExpense;
+  const pSavings = ptx.filter(t=>t.type==='expense' && t.cat==='tiet_kiem').reduce((s,t)=>s+t.amount,0);
 
   const trIncome = pctTrend(income, pIncome, true);
   const trExpense = pctTrend(expense, pExpense, false);
@@ -829,7 +1159,7 @@ function renderHome(){
   app.innerHTML = `
     <div class="top-row">
       <h1>💰 Sổ thu chi</h1>
-      <button class="btn-export" id="btnExport">⬇️ Xuất báo cáo</button>
+      <button class="btn-export" id="btnExportPDF">🖨️ Xuất PDF</button>
     </div>
 
     <div class="balance-card">
@@ -905,7 +1235,7 @@ function renderHome(){
 
   document.getElementById('prevMonth').onclick = ()=>{ viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1); render(); };
   document.getElementById('nextMonth').onclick = ()=>{ viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 1); render(); };
-  document.getElementById('btnExport').onclick = ()=> exportReport(mtx);
+  document.getElementById('btnExportPDF').onclick = ()=> exportReportPDF(mtx);
 
   renderTxList(mtx);
   renderPie(mtx);
@@ -1495,12 +1825,15 @@ function renderDebtsBody(app){
 }
 
 function renderSavingsBody(container){
-  const totalPrincipal = savings.reduce((s,f)=> s + (f.monthlyAmount||0)*(f.monthsPaid||0), 0);
-  const totalInterest = savings.reduce((s,f)=>{
+  const activeSavings = savings.filter(f=>!f.withdrawn);
+  const withdrawnSavings = savings.filter(f=>f.withdrawn);
+  const totalPrincipal = activeSavings.reduce((s,f)=> s + (f.monthlyAmount||0)*(f.monthsPaid||0), 0);
+  const totalInterest = activeSavings.reduce((s,f)=>{
     const perMonth = Math.round((f.monthlyAmount||0) * (f.interestPct||0) / 100);
     return s + perMonth * (f.monthsPaid||0);
   }, 0);
-  const totalValue = totalPrincipal + totalInterest;
+  const totalWithdrawn = withdrawnSavings.reduce((s,f)=> s + (f.withdrawnAmount||0), 0);
+  const totalValue = totalPrincipal + totalInterest + totalWithdrawn;
 
   container.innerHTML = `
     <div class="balance-card">
@@ -1515,6 +1848,11 @@ function renderSavingsBody(container){
           <div class="mini-label">📈 Lãi tích luỹ</div>
           <div class="mini-value">${fmt(totalInterest)}</div>
         </div>
+        ${withdrawnSavings.length ? `
+        <div class="mini savings">
+          <div class="mini-label">💸 Đã lấy hụi</div>
+          <div class="mini-value">${fmt(totalWithdrawn)}</div>
+        </div>` : ''}
       </div>
     </div>
 
@@ -1608,7 +1946,7 @@ function renderSavingsBody(container){
     const id = 'sv_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
     savings.push({
       id, name, icon: svIcons[svIconIdx], monthlyAmount: amount,
-      interestPct, monthsPaid, monthsTotal, dueDay, walletId: svWallet
+      interestPct, monthsPaid, monthsTotal, dueDay, walletId: svWallet, withdrawn:false
     });
     await saveSavings();
     render();
@@ -1632,18 +1970,23 @@ function renderSavingsBody(container){
     const monthsRemaining = hasTerm ? Math.max(0, monthsTotal - monthsPaid) : 0;
     const amountRemaining = monthsRemaining * monthlyAmount;
     const isDone = hasTerm && monthsPaid >= monthsTotal;
+    const isWithdrawn = !!f.withdrawn;
+    // Tổng giá trị trọn kỳ khi lấy hụi = số tiền góp/tháng * tổng số tháng + tổng lãi cả kỳ
+    const fullPayout = hasTerm ? (monthlyAmount + interestPerMonth) * monthsTotal : totalValue;
 
     const dotsHTML = hasTerm ? `
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin:8px 0;">
         ${Array.from({length:monthsTotal},(_,i)=>{
           const isPaid = i < monthsPaid;
-          return `<div style="width:20px;height:20px;border-radius:5px;font-size:9.5px;display:flex;align-items:center;justify-content:center;background:${isPaid?'#639922':'var(--line)'};color:${isPaid?'#fff':'var(--ink-soft)'};">${i+1}</div>`;
+          const unpaidBg = isWithdrawn ? 'var(--expense-soft)' : 'var(--line)';
+          const unpaidColor = isWithdrawn ? 'var(--expense)' : 'var(--ink-soft)';
+          return `<div style="width:20px;height:20px;border-radius:5px;font-size:9.5px;display:flex;align-items:center;justify-content:center;background:${isPaid?'#639922':unpaidBg};color:${isPaid?'#fff':unpaidColor};font-weight:${isWithdrawn&&!isPaid?'700':'400'};">${i+1}</div>`;
         }).join('')}
       </div>
     ` : '';
 
     return `
-      <div class="card" style="margin-bottom:10px;">
+      <div class="card ${isWithdrawn && isDone ?'debt-paid-off':''}" style="margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div style="width:38px;height:38px;border-radius:10px;background:#63992222;color:#639922;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">${f.icon}</div>
           <div style="flex:1;min-width:0;">
@@ -1654,6 +1997,25 @@ function renderSavingsBody(container){
           <button class="jar-del sv-del" data-id="${f.id}" style="position:static;font-size:15px;color:var(--ink-soft);background:none;border:none;cursor:pointer;">✕</button>
         </div>
 
+        ${isWithdrawn ? `
+        <div style="font-size:12.5px;background:var(--income-soft);color:var(--brand-dark);border-radius:10px;padding:8px 10px;margin-bottom:10px;">
+          ✅ Đã lấy hụi <b>${fmt(f.withdrawnAmount||fullPayout)}</b> ngày ${f.withdrawnDate ? new Date(f.withdrawnDate+'T00:00:00').toLocaleDateString('vi-VN') : ''} — chuyển sang trả góp hàng tháng
+        </div>
+
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;">
+          <span style="color:var(--ink-soft);">Đã trả góp: <b style="color:var(--ink);">${monthsPaid}</b>${hasTerm?`/${monthsTotal}`:''} tháng</span>
+          ${hasTerm ? `<span style="color:var(--ink-soft);">Còn lại: <b style="color:var(--expense);">${fmt(amountRemaining)}</b></span>` : ''}
+        </div>
+        ${dotsHTML}
+        <div class="debt-pay-row" style="margin-top:2px;">
+          <div style="flex:1;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;">
+            Trả góp tháng ${new Date().getMonth()+1}/${new Date().getFullYear()} · ${wallet.icon} ${escapeHtml(wallet.name)}
+          </div>
+          <button data-id="${f.id}" class="sv-contribute-btn" ${isDone?'disabled style="opacity:0.5;"':''}>
+            ${isDone?'Đã trả xong ✓':'+1 tháng'}
+          </button>
+        </div>
+        ` : `
         <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;">
           <span style="color:var(--ink-soft);">Đã đóng: <b style="color:var(--ink);">${monthsPaid}</b>${hasTerm?`/${monthsTotal}`:''} tháng</span>
           <span style="color:var(--ink-soft);">Tổng hiện có: <b style="color:var(--accent);">${fmt(totalValue)}</b></span>
@@ -1661,10 +2023,7 @@ function renderSavingsBody(container){
         ${dotsHTML}
         ${hasTerm ? `
         <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;">
-          ${isDone
-            ? '<b style="color:var(--income);">Đã đóng đủ 🎉</b>'
-            : `Nếu rút bây giờ, còn phải đóng thêm <b style="color:var(--expense);">${monthsRemaining}</b> tháng (<b style="color:var(--expense);">${fmt(amountRemaining)}</b>) — tính như trả góp hàng tháng`
-          }
+          Nếu lấy hụi trọn kỳ ngay bây giờ, bạn nhận <b style="color:var(--brand-dark);">${fmt(fullPayout)}</b>, sau đó trả góp dần <b style="color:var(--expense);">${monthsRemaining}</b> tháng còn lại (${fmt(monthlyAmount)}/tháng)
         </div>` : `<div style="margin-bottom:8px;"></div>`}
 
         <div class="debt-pay-row" style="margin-top:2px;">
@@ -1675,6 +2034,10 @@ function renderSavingsBody(container){
             ${isDone?'Đã xong ✓':'+1 tháng'}
           </button>
         </div>
+        <button data-id="${f.id}" class="sv-withdraw-btn" style="width:100%;margin-top:8px;border:1.5px solid var(--brand);background:var(--income-soft);color:var(--brand-dark);border-radius:11px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
+          💸 Lấy hụi trọn kỳ (${fmt(fullPayout)})
+        </button>
+        `}
       </div>
     `;
   }).join('');
@@ -1694,6 +2057,10 @@ function renderSavingsBody(container){
   listEl.querySelectorAll('.sv-contribute-btn').forEach(btn=>{
     btn.onclick = ()=> contributeSavingMonth(btn.dataset.id);
   });
+
+  listEl.querySelectorAll('.sv-withdraw-btn').forEach(btn=>{
+    btn.onclick = ()=> withdrawSavingPlan(btn.dataset.id);
+  });
 }
 
 async function contributeSavingMonth(id){
@@ -1705,8 +2072,45 @@ async function contributeSavingMonth(id){
   transactions.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
     type: 'expense', cat: 'tiet_kiem', walletId: f.walletId, amount: f.monthlyAmount,
-    date: todayStr(), note: `Góp tiết kiệm/hụi: ${f.name} (tháng ${f.monthsPaid})`
+    date: todayStr(),
+    note: f.withdrawn
+      ? `Trả góp hụi: ${f.name} (tháng ${f.monthsPaid})`
+      : `Góp tiết kiệm/hụi: ${f.name} (tháng ${f.monthsPaid})`
   });
+  await saveData();
+  render();
+}
+
+async function withdrawSavingPlan(id){
+  const f = savings.find(x=>x.id===id);
+  if(!f || f.withdrawn) return;
+  const monthlyAmount = f.monthlyAmount || 0;
+  const interestPerMonth = Math.round(monthlyAmount * (f.interestPct||0) / 100);
+  const hasTerm = (f.monthsTotal||0) > 0;
+  // Lấy hụi trọn kỳ = số tiền góp/tháng * tổng số tháng + tổng lãi cả kỳ
+  const suggested = hasTerm
+    ? (monthlyAmount + interestPerMonth) * f.monthsTotal
+    : (monthlyAmount + interestPerMonth) * (f.monthsPaid||0);
+
+  const amtStr = prompt(`Số tiền thực nhận khi lấy hụi "${f.name}" (đ):`, suggested || 0);
+  if(amtStr === null) return;
+  const amount = Math.round(parseFloat(amtStr.replace(/[^0-9.-]/g,'')) || 0);
+  if(amount <= 0) return;
+
+  const wallet = findWallet(f.walletId);
+  const dateStr = todayStr();
+
+  transactions.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    type: 'income', cat: 'lay_hui', walletId: f.walletId, amount,
+    date: dateStr, note: `Lấy hụi/Rút tiết kiệm: ${f.name}`
+  });
+
+  f.withdrawn = true;
+  f.withdrawnAmount = amount;
+  f.withdrawnDate = dateStr;
+
+  await saveSavings();
   await saveData();
   render();
 }
