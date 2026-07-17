@@ -158,6 +158,7 @@
   .tx-amount.income{color:var(--income);}
   .tx-amount.expense{color:var(--expense);}
   .tx-date{font-size:11.5px;color:var(--ink-soft);margin-top:1px;}
+  .tx-remain{font-size:11px;color:var(--ink-faint);margin-top:1px;white-space:nowrap;}
   .tx-del{
     background:none;border:none;color:var(--ink-soft);font-size:18px;cursor:pointer;
     padding:2px 4px;margin-left:2px;line-height:1;
@@ -596,6 +597,9 @@ const DEFAULT_JARS = [
 ];
 let jars = [];
 let currentTab = 'home';
+let addFilterType = 'all';
+let addFilterWallet = 'all';
+let addFilterDate = '';
 let depositTargetWallet = null;
 let catFixedView = 'cats';
 let debtsView = 'debts';
@@ -1289,6 +1293,31 @@ function renderHome(){
   renderReportBody(document.getElementById('reportSection'));
 }
 
+function walletBalanceAfterEachTx(){
+  // Với mỗi ví, tính số dư còn lại NGAY SAU từng giao dịch (theo đúng thứ tự thời gian),
+  // tôn trọng mốc "số dư đầu tháng" (balanceAsOf) giống walletBalance().
+  // Trong cùng 1 ngày: tính khoản THU trước, khoản CHI sau, để không hiện âm giả
+  // khi thu và chi cùng ngày nhưng thứ tự lưu (id) lại đặt khoản chi lên trước.
+  const map = {};
+  wallets.forEach(w=>{
+    const anchor = w.balanceAsOf || '0000-01-01';
+    const tx = transactions
+      .filter(x=>(x.walletId||'cash')===w.id && x.date>=anchor)
+      .slice()
+      .sort((a,b)=>
+        a.date.localeCompare(b.date)
+        || (a.type==='income'?0:1) - (b.type==='income'?0:1)
+        || a.id.localeCompare(b.id)
+      );
+    let bal = w.initialBalance||0;
+    tx.forEach(x=>{
+      bal += x.type==='income' ? x.amount : -x.amount;
+      map[x.id] = bal;
+    });
+  });
+  return map;
+}
+
 function renderTxList(mtx, containerId){
   containerId = containerId || 'txList';
   const list = document.getElementById(containerId);
@@ -1297,11 +1326,13 @@ function renderTxList(mtx, containerId){
     list.innerHTML = `<div class="tx-empty">Chưa có giao dịch nào.<br>Ghi lại khoản thu hoặc chi đầu tiên nhé.</div>`;
     return;
   }
+  const remainMap = walletBalanceAfterEachTx();
   list.innerHTML = mtx.map(t=>{
     const cat = findCat(t.cat);
     const wallet = findWallet(t.walletId || 'cash');
     const d = new Date(t.date+'T00:00:00');
     const dStr = `${d.getDate()}/${d.getMonth()+1}`;
+    const remain = remainMap[t.id];
     return `
       <div class="tx-item">
         <div class="tx-icon" style="background:${cat.color}22;color:${cat.color};">${cat.icon}</div>
@@ -1312,6 +1343,7 @@ function renderTxList(mtx, containerId){
         <div class="tx-right">
           <div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
           <div class="tx-date">${dStr}</div>
+          ${remain !== undefined ? `<div class="tx-remain">Còn lại ${fmt(remain)}</div>` : ''}
         </div>
         <button class="tx-edit" data-id="${t.id}" aria-label="Sửa giao dịch">✏️</button>
         <button class="tx-del" data-id="${t.id}" aria-label="Xoá giao dịch">🗑</button>
@@ -1582,6 +1614,12 @@ function renderWallets(){
     const amount = Math.round(parseFloat(amountEl.value) || 0);
     if(!amount || amount <= 0){ amountEl.focus(); return; }
     if(!depositTargetWallet){ alert('Cần có ví để nộp tiền vào.'); return; }
+    const cashAvailable = walletBalance('cash');
+    if(amount > cashAvailable){
+      alert(`Ví "Tiền mặt" không đủ số dư (còn ${fmt(cashAvailable)}). Hãy nhập số tiền nhỏ hơn.`);
+      amountEl.focus();
+      return;
+    }
     const date = todayStr();
     const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2,7);
     transactions.push({
@@ -2758,7 +2796,20 @@ function renderAddTab(){
     </div>
 
     <div class="card">
-      <h2>Dữ liệu đã ghi (${allTx.length})</h2>
+      <h2>🔎 Bộ lọc</h2>
+      <label>Loại</label>
+      <div class="wallet-select" id="aFilterType"></div>
+      <label style="margin-top:10px;">Ví</label>
+      <div class="wallet-select" id="aFilterWallet"></div>
+      <label style="margin-top:10px;">Tìm theo ngày</label>
+      <div class="money-row">
+        <input type="date" id="aFilterDate" value="${addFilterDate}">
+        <button type="button" class="btn cancel" id="aFilterDateClear" style="flex:0 0 auto;padding:0 14px;">Xoá</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dữ liệu đã ghi (<span id="aTxCount"></span>)</h2>
       <div class="tx-list" id="aTxList"></div>
     </div>
   `;
@@ -2783,7 +2834,40 @@ function renderAddTab(){
     if(ok) render();
   };
 
-  renderTxList(allTx, 'aTxList');
+  // ── Bộ lọc: Thu / Chi / theo ví / theo ngày ──
+  const typeWrap = document.getElementById('aFilterType');
+  const typeOptions = [
+    {id:'all', label:'Tất cả'},
+    {id:'income', label:'Thu'},
+    {id:'expense', label:'Chi'},
+  ];
+  typeWrap.innerHTML = typeOptions.map(o=>`
+    <button type="button" class="wallet-chip ${o.id===addFilterType?'active':''}" data-id="${o.id}">${o.label}</button>
+  `).join('');
+  typeWrap.querySelectorAll('.wallet-chip').forEach(b=>{
+    b.onclick = ()=>{ addFilterType = b.dataset.id; render(); };
+  });
+
+  const walletFilterWrap = document.getElementById('aFilterWallet');
+  walletFilterWrap.innerHTML = `<button type="button" class="wallet-chip ${addFilterWallet==='all'?'active':''}" data-id="all">Tất cả</button>` +
+    wallets.map(w=>`
+      <button type="button" class="wallet-chip ${w.id===addFilterWallet?'active':''}" data-id="${w.id}">${w.icon} ${escapeHtml(w.name)}</button>
+    `).join('');
+  walletFilterWrap.querySelectorAll('.wallet-chip').forEach(b=>{
+    b.onclick = ()=>{ addFilterWallet = b.dataset.id; render(); };
+  });
+
+  document.getElementById('aFilterDate').onchange = (e)=>{ addFilterDate = e.target.value; render(); };
+  document.getElementById('aFilterDateClear').onclick = ()=>{ addFilterDate = ''; render(); };
+
+  const filteredTx = allTx.filter(t=>
+    (addFilterType==='all' || t.type===addFilterType) &&
+    (addFilterWallet==='all' || (t.walletId||'cash')===addFilterWallet) &&
+    (!addFilterDate || t.date===addFilterDate)
+  );
+  document.getElementById('aTxCount').textContent = filteredTx.length===allTx.length ? `${allTx.length}` : `${filteredTx.length}/${allTx.length}`;
+
+  renderTxList(filteredTx, 'aTxList');
 }
 
 function updateAddTypeUI(){
@@ -2952,6 +3036,25 @@ async function commitTx(prefix){
     amountEl.focus();
     return false;
   }
+  const roundedAmount = Math.round(amount);
+
+  // ── Không cho phép ví bị âm khi ghi khoản chi ──
+  if(currentType === 'expense'){
+    let available = walletBalance(currentWallet);
+    if(editingId){
+      const orig = transactions.find(t=>t.id===editingId);
+      if(orig && (orig.walletId||'cash') === currentWallet){
+        // Giao dịch cũ sắp bị thay thế, cộng lại ảnh hưởng của nó trước khi so sánh
+        available += orig.type==='expense' ? orig.amount : -orig.amount;
+      }
+    }
+    if(roundedAmount > available){
+      alert(`Ví "${findWallet(currentWallet).name}" không đủ số dư để chi (còn ${fmt(available)}). Hãy nhập số tiền nhỏ hơn hoặc chọn ví khác.`);
+      amountEl.focus();
+      return false;
+    }
+  }
+
   if(editingId){
     const idx = transactions.findIndex(t=>t.id===editingId);
     if(idx > -1){
@@ -2961,7 +3064,7 @@ async function commitTx(prefix){
         cat: currentCat,
         walletId: currentWallet,
         jarId: currentJar || '',
-        amount: Math.round(amount),
+        amount: roundedAmount,
         date,
         note
       };
@@ -2973,7 +3076,7 @@ async function commitTx(prefix){
       cat: currentCat,
       walletId: currentWallet,
       jarId: currentJar || '',
-      amount: Math.round(amount),
+      amount: roundedAmount,
       date,
       note
     };
